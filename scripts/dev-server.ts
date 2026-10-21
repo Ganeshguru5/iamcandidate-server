@@ -289,7 +289,7 @@ async function main() {
   await listen(server, API_PORT, "API")
 
   console.log(`
-  Personal OS API (dev)   http://localhost:${API_PORT}
+  knot API (dev)          http://localhost:${API_PORT}
   Sign in                 demo@example.com / demo123  (admin)
   Data                    ${DATA_DIR}  (npm run dev:reset to start over)
   Frontend                NEXT_PUBLIC_API_MODE=api, NEXT_PUBLIC_API_URL=http://localhost:${API_PORT}

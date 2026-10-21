@@ -2,7 +2,7 @@
   "name": "knot-server",
   "version": "0.1.0",
   "private": true,
-  "description": "Personal OS backend \u2014 AWS SAM, Lambda, API Gateway HTTP API, DynamoDB and S3.",
+  "description": "knot backend \u2014 AWS SAM, Lambda, API Gateway HTTP API, DynamoDB and S3.",
   "engines": {
     "node": ">=22"
   },

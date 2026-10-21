@@ -1,6 +1,6 @@
-# knot-server — Personal OS backend
+# knot-server — knot backend
 
-Serverless backend for the [Personal OS frontend](../knot/README.md): AWS SAM, API Gateway
+Serverless backend for the [knot frontend](../knot/README.md): AWS SAM, API Gateway
 HTTP API, Lambda (Node.js 22 + TypeScript), DynamoDB and S3. It implements exactly the data
 contract the frontend's service layer (`knot/src/lib/services/contracts.ts`) already uses.
 

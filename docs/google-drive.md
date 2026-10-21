@@ -18,10 +18,10 @@ Scopes: `drive.readonly`, `openid`, `email`. Nothing is ever written to the user
 
 ## 1. Create the Google OAuth client (one time, ~10 minutes)
 
-1. Open <https://console.cloud.google.com/> and create a project (e.g. "Personal OS").
+1. Open <https://console.cloud.google.com/> and create a project (e.g. "knot").
 2. **APIs & Services → Library** → search **Google Drive API** → **Enable**.
 3. **APIs & Services → OAuth consent screen** (Google Auth Platform):
-   - User type **External**, app name "Personal OS", your email as support and developer contact.
+   - User type **External**, app name "knot", your email as support and developer contact.
    - **Data access / Scopes**: add `.../auth/drive.readonly`, `openid`, `.../auth/userinfo.email`.
    - **Audience → Test users**: add every Google account that will connect (e.g. your Gmail).
      While the app is in _Testing_, only these accounts can sign in.
@@ -74,4 +74,4 @@ allow. You land back on the Drive page and can browse and **Add to Docs**.
 | Google shows `redirect_uri_mismatch`                           | The redirect URI must match the OAuth client's entry exactly (scheme, host, port, path). |
 | Google shows "Access blocked … has not completed verification" | Add your account under **Audience → Test users**.                                        |
 | "This Google sign-in has expired or wasn't started here"       | The sign-in took over 10 minutes or was opened in another session — connect again.       |
-| "Google didn't grant offline access"                           | Remove Personal OS at <https://myaccount.google.com/permissions> and connect again.      |
+| "Google didn't grant offline access"                           | Remove knot at <https://myaccount.google.com/permissions> and connect again.      |

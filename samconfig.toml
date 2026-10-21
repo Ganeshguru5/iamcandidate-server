@@ -1,0 +1,40 @@
+# SAM CLI configuration. `sam deploy --guided` can update this file; it never
+# contains credentials (those come from your AWS profile).
+version = 0.1
+
+[default.global.parameters]
+stack_name = "personal-os-dev"
+region = "ap-south-1"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+resolve_image_repos = true
+s3_prefix = "personal-os-dev"
+parameter_overrides = "Stage=\"dev\" AllowedOrigins=\"http://localhost:3000\""
+
+# Production: `sam deploy --config-env prod`
+[prod.global.parameters]
+stack_name = "personal-os-prod"
+region = "ap-south-1"
+
+[prod.build.parameters]
+cached = true
+parallel = true
+
+[prod.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+resolve_image_repos = true
+s3_prefix = "personal-os-prod"
+# Replace with the deployed frontend origin before the first prod deploy.
+parameter_overrides = "Stage=\"prod\" AllowedOrigins=\"https://your-frontend.example.com\""

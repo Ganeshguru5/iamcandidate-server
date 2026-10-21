@@ -1,0 +1,53 @@
+{
+  "name": "knot-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal OS backend \u2014 AWS SAM, Lambda, API Gateway HTTP API, DynamoDB and S3.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false --tsconfig scripts/tsconfig.json scripts/dev-server.ts",
+    "dev:reset": "node -e \"require('fs').rmSync('.local',{recursive:true,force:true});console.log('Local dev data deleted')\"",
+    "build": "sam build",
+    "start": "sam local start-api --port 3001 --env-vars env.local.json --docker-network knot-local --warm-containers LAZY --parameter-overrides Architecture=x86_64 AuthSecret=local-only-overridden-by-env-local-json EncryptionKey=local-only-overridden-by-env-local-json",
+    "deploy": "sam deploy",
+    "deploy:guided": "sam deploy --guided",
+    "validate": "sam validate --lint",
+    "local:up": "docker compose up -d",
+    "local:down": "docker compose down",
+    "local:setup": "tsx scripts/setup-local.ts",
+    "seed": "tsx --tsconfig scripts/tsconfig.json scripts/seed.ts",
+    "create-user": "tsx scripts/create-user.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1152.0",
+    "@aws-sdk/client-s3": "^3.1152.0",
+    "@aws-sdk/lib-dynamodb": "^3.1152.0",
+    "@aws-sdk/s3-request-presigner": "^3.1152.0",
+    "nodemailer": "^10.1.7",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/aws-lambda": "^8.10.164",
+    "@types/node": "^22.0.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/smtp-server": "^3.5.13",
+    "dynalite": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.0",
+    "prettier": "^3.9.10",
+    "smtp-server": "^3.20.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.71.2",
+    "vitest": "^5.0.5"
+  }
+}

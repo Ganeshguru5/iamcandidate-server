@@ -1,0 +1,10 @@
+node_modules/
+.aws-sam/
+coverage/
+.env
+.env.*
+!.env.example
+samconfig.local.toml
+*.tsbuildinfo
+.local/
+.tools/

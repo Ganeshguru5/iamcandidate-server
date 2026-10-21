@@ -1,0 +1,42 @@
+# Local infrastructure for `sam local start-api`:
+#   - DynamoDB Local on http://localhost:8000
+#   - MinIO (S3-compatible) on http://localhost:9000, console on http://localhost:9001
+# Lambda containers join the `knot-local` network (see `npm run start`) and
+# reach these services as http://dynamodb:8000 and http://minio:9000.
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    # -sharedDb: one database regardless of credentials/region used by clients.
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/home/dynamodblocal/data"]
+    user: root
+    # Come back automatically when Docker Desktop restarts.
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+
+  minio:
+    # Optional (only needed for document uploads): `docker compose --profile s3 up -d`.
+    # MinIO's public image availability has changed; use any S3-compatible image
+    # you can pull and keep the ports/credentials below.
+    profiles: ["s3"]
+    image: quay.io/minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      # Local-only credentials for the throwaway MinIO container (not AWS keys).
+      MINIO_ROOT_USER: knot-local
+      MINIO_ROOT_PASSWORD: knot-local-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+volumes:
+  dynamodb-data:
+  minio-data:
+
+networks:
+  default:
+    name: knot-local

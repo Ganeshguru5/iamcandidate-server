@@ -1,0 +1,1299 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Personal OS backend (knot-server): API Gateway HTTP API + Lambda (Node.js/TypeScript)
+  + DynamoDB (single table) + private S3 bucket for documents. No AI services.
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [local, dev, staging, prod]
+    Description: Deployment stage; used in resource names.
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Default: http://localhost:3000
+    Description: >-
+      Frontend origins allowed by CORS (API and S3 uploads), comma-separated.
+      Set this to the deployed frontend domain, e.g. https://knot.example.com.
+  AuthSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: >-
+      Secret used to sign session tokens (32+ random characters). Generate one with
+      `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`.
+      Changing it signs everyone out.
+  EncryptionKey:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: >-
+      Key for encrypting stored secrets such as users' SMTP passwords (32+ random
+      characters, generated like AuthSecret). Changing it makes saved SMTP passwords
+      unreadable — users would need to re-enter them.
+  GoogleClientId:
+    Type: String
+    Default: ""
+    Description: Google OAuth client ID for the Drive integration (leave empty to disable it).
+  GoogleClientSecret:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Google OAuth client secret.
+  GoogleRedirectUri:
+    Type: String
+    Default: ""
+    Description: >-
+      Where Google returns after consent, e.g.
+      https://your-frontend.example.com/integrations/google-drive/callback. Must match the
+      OAuth client's authorized redirect URI exactly.
+  DefaultUserId:
+    Type: String
+    Default: usr_demo
+    Description: Fallback data owner, only used if AUTH_SECRET is missing (tests).
+  Architecture:
+    Type: String
+    Default: arm64
+    AllowedValues: [arm64, x86_64]
+    Description: >-
+      Lambda CPU architecture. arm64 (Graviton) is cheaper in AWS; `npm run start` passes
+      x86_64 so `sam local` doesn't emulate ARM on Intel/AMD machines.
+  LogRetentionDays:
+    Type: Number
+    Default: 30
+    AllowedValues: [7, 14, 30, 60, 90, 180, 365]
+
+Globals:
+  # Runtime, Architectures and CodeUri are set per function: the LaTeX
+  # compiler is a container image, which can't inherit them.
+  Function:
+    MemorySize: 512
+    Timeout: 10
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        DYNAMODB_TABLE: !Ref Table
+        S3_BUCKET: !Ref DocumentsBucket
+        ALLOWED_ORIGINS: !Join [",", !Ref AllowedOrigins]
+        DEFAULT_USER_ID: !Ref DefaultUserId
+        AUTH_SECRET: !Ref AuthSecret
+        DATA_ENCRYPTION_KEY: !Ref EncryptionKey
+        GOOGLE_CLIENT_ID: !Ref GoogleClientId
+        GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
+        GOOGLE_REDIRECT_URI: !Ref GoogleRedirectUri
+        NODE_OPTIONS: --enable-source-maps
+        # Local-only overrides (set in env.local.json). Empty in AWS, so the SDK
+        # uses the regional endpoints and the function's IAM role.
+        DYNAMODB_ENDPOINT: ""
+        S3_ENDPOINT: ""
+        S3_PUBLIC_ENDPOINT: ""
+        S3_ACCESS_KEY_ID: ""
+        S3_SECRET_ACCESS_KEY: ""
+        ALLOW_PRIVATE_SMTP_HOSTS: ""
+
+Resources:
+  # ------------------------------------------------------------------
+  # API
+  # ------------------------------------------------------------------
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Description: Personal OS REST API
+      CorsConfiguration:
+        AllowOrigins: !Ref AllowedOrigins
+        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+        AllowHeaders: [content-type, authorization]
+        MaxAge: 600
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 25
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogs.Arn
+        Format: >-
+          {"requestId":"$context.requestId","ip":"$context.identity.sourceIp","method":"$context.httpMethod",
+          "path":"$context.path","routeKey":"$context.routeKey","status":"$context.status",
+          "latencyMs":"$context.responseLatency","integrationError":"$context.integrationErrorMessage"}
+      # Authentication is built in: every route except POST /auth/login checks
+      # the bearer token in the Lambda (src/lib/auth.ts). The LaTeX compiler holds
+      # no secrets, so its route is checked here by SessionAuthorizer instead.
+      Auth:
+        Authorizers:
+          SessionAuthorizer:
+            FunctionArn: !GetAtt SessionAuthorizerFunction.Arn
+            AuthorizerPayloadFormatVersion: "2.0"
+            EnableSimpleResponses: true
+            Identity:
+              Headers: [Authorization]
+              # No caching: disabled or deleted users are rejected immediately.
+              ReauthorizeEvery: 0
+
+  ApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/personal-os-${Stage}
+      RetentionInDays: !Ref LogRetentionDays
+
+  # ------------------------------------------------------------------
+  # Data
+  # ------------------------------------------------------------------
+  Table:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub personal-os-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  DocumentsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub personal-os-documents-${AWS::AccountId}-${Stage}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          # Browsers PUT files to presigned URLs and GET downloads directly.
+          - AllowedOrigins: !Ref AllowedOrigins
+            AllowedMethods: [PUT, GET]
+            AllowedHeaders: [content-type]
+            ExposedHeaders: [ETag]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  DocumentsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DocumentsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt DocumentsBucket.Arn
+              - !Sub ${DocumentsBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # ------------------------------------------------------------------
+  # Functions, grouped by domain. Every route is an explicit HTTP API route;
+  # DynamoDB/S3 permissions are scoped to what each function actually calls.
+  # ------------------------------------------------------------------
+
+  CareerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/career.ts
+    Properties:
+      Description: Applications, companies, contacts, referrals and interviews.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: career.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+              Resource: !GetAtt Table.Arn
+      Events:
+        ListApplications:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /applications
+        CreateApplication:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /applications
+        GetApplication:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /applications/{id}
+        UpdateApplication:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /applications/{id}
+        DeleteApplication:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /applications/{id}
+        ChangeApplicationStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /applications/{id}/status
+        AddApplicationTimelineEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /applications/{id}/timeline
+        ListCompanies:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /companies
+        CreateCompany:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /companies
+        GetCompany:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /companies/{id}
+        UpdateCompany:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /companies/{id}
+        DeleteCompany:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /companies/{id}
+        ListContacts:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /contacts
+        CreateContact:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /contacts
+        GetContact:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /contacts/{id}
+        UpdateContact:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /contacts/{id}
+        DeleteContact:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /contacts/{id}
+        ListReferrals:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /referrals
+        CreateReferral:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /referrals
+        GetReferral:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /referrals/{id}
+        UpdateReferral:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /referrals/{id}
+        DeleteReferral:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /referrals/{id}
+        ListInterviews:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /interviews
+        CreateInterview:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /interviews
+        GetInterview:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /interviews/{id}
+        UpdateInterview:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /interviews/{id}
+        DeleteInterview:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /interviews/{id}
+
+  CareerFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${CareerFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  DocumentsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/documents.ts
+    Properties:
+      Description: Documents (S3 presigned uploads) and resumes.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: documents.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+                - dynamodb:BatchWriteItem
+              Resource: !GetAtt Table.Arn
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+                - s3:DeleteObject
+              Resource: !Sub ${DocumentsBucket.Arn}/users/*
+      Events:
+        ListDocuments:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /documents
+        CreateDocumentUploadUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /documents/upload-url
+        CreateDocument:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /documents
+        GetDocument:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /documents/{id}
+        CreateDocumentDownloadUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /documents/{id}/download-url
+        UpdateDocument:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /documents/{id}
+        ToggleDocumentStar:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /documents/{id}/toggle-star
+        DeleteDocument:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /documents/{id}
+        ListResumes:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /resumes
+        CreateResume:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /resumes
+        GetResume:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /resumes/{id}
+        UpdateResume:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /resumes/{id}
+        DeleteResume:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /resumes/{id}
+        DuplicateResume:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /resumes/{id}/duplicate
+        SetDefaultResume:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /resumes/{id}/default
+
+  DocumentsFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${DocumentsFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  WorkspaceFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/workspace.ts
+    Properties:
+      Description: Projects, tasks and notes.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: workspace.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+              Resource: !GetAtt Table.Arn
+      Events:
+        ListProjects:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /projects
+        CreateProject:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /projects
+        GetProject:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /projects/{id}
+        UpdateProject:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /projects/{id}
+        DeleteProject:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /projects/{id}
+        ListTasks:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /tasks
+        CreateTask:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /tasks
+        GetTask:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /tasks/{id}
+        UpdateTask:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /tasks/{id}
+        DeleteTask:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /tasks/{id}
+        ToggleTask:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /tasks/{id}/toggle
+        ListNotes:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /notes
+        CreateNote:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /notes
+        GetNote:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /notes/{id}
+        UpdateNote:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /notes/{id}
+        DeleteNote:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /notes/{id}
+
+  WorkspaceFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${WorkspaceFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  KnowledgeFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/knowledge.ts
+    Properties:
+      Description: Skills, certifications and links.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: knowledge.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+              Resource: !GetAtt Table.Arn
+      Events:
+        ListSkills:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /skills
+        CreateSkill:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /skills
+        GetSkill:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /skills/{id}
+        UpdateSkill:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /skills/{id}
+        DeleteSkill:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /skills/{id}
+        ListCertifications:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /certifications
+        CreateCertification:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /certifications
+        GetCertification:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /certifications/{id}
+        UpdateCertification:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /certifications/{id}
+        DeleteCertification:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /certifications/{id}
+        ListLinks:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /links
+        CreateLink:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /links
+        GetLink:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /links/{id}
+        UpdateLink:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /links/{id}
+        DeleteLink:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /links/{id}
+
+  KnowledgeFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${KnowledgeFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  SystemFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/system.ts
+    Properties:
+      Description: Activity feed, notifications and settings.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: system.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:Query
+                - dynamodb:BatchWriteItem
+              Resource: !GetAtt Table.Arn
+      Events:
+        ListActivities:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /activities
+        ListNotifications:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /notifications
+        MarkNotificationRead:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /notifications/{id}/read
+        MarkAllNotificationsRead:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /notifications/read-all
+        GetProfile:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /settings/profile
+        UpdateProfile:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /settings/profile
+        GetNotificationPreferences:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /settings/notifications
+        UpdateNotificationPreferences:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /settings/notifications
+
+  SystemFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${SystemFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  DashboardFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/dashboard.ts
+    Properties:
+      Description: Read-only dashboard aggregate.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: dashboard.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+              Resource: !GetAtt Table.Arn
+      Events:
+        GetDashboard:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /dashboard
+
+  DashboardFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${DashboardFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  UsersFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/users.ts
+    Properties:
+      Description: Sign-in, own account and admin user management.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: users.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+                - dynamodb:BatchWriteItem
+              Resource: !GetAtt Table.Arn
+            - Effect: Allow
+              Action:
+                - s3:DeleteObject
+              Resource: !Sub ${DocumentsBucket.Arn}/users/*
+      Events:
+        Login:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /auth/login
+        GetCurrentUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /auth/me
+        ChangePassword:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /auth/password
+        ListUsers:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /users
+        CreateUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /users
+        GetUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /users/{id}
+        UpdateUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /users/{id}
+        DeleteUser:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /users/{id}
+
+  UsersFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${UsersFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  CommunicationFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/communication.ts
+    Properties:
+      Description: Sends email through each user's own SMTP account; sent mail, drafts and templates.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: communication.handler
+      Timeout: 30
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+              Resource: !GetAtt Table.Arn
+      Events:
+        ListEmails:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /emails
+        GetEmail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /emails/{id}
+        SendEmail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /emails/send
+        CreateDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /emails/drafts
+        UpdateDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /emails/drafts/{id}
+        UpdateEmail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /emails/{id}
+        DeleteEmail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /emails/{id}
+        ListTemplates:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /templates
+        CreateTemplate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /templates
+        GetTemplate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /templates/{id}
+        UpdateTemplate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /templates/{id}
+        DeleteTemplate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /templates/{id}
+        DuplicateTemplate:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /templates/{id}/duplicate
+        GetSmtpSettings:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /settings/smtp
+        SaveSmtpSettings:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /settings/smtp
+        DeleteSmtpSettings:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /settings/smtp
+        TestSmtpSettings:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /settings/smtp/test
+
+  CommunicationFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${CommunicationFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  IntegrationsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/integrations.ts
+    Properties:
+      Description: Google Drive OAuth connect, folder browsing and importing files into Documents.
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: integrations.handler
+      Timeout: 30
+      MemorySize: 1024
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+                - dynamodb:Query
+              Resource: !GetAtt Table.Arn
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub ${DocumentsBucket.Arn}/users/*
+      Events:
+        GetGoogleDriveStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/google-drive
+        GetGoogleDriveAuthUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/google-drive/auth-url
+        ConnectGoogleDrive:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /integrations/google-drive/connect
+        DisconnectGoogleDrive:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /integrations/google-drive
+        ListGoogleDriveFiles:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/google-drive/files
+        ImportGoogleDriveFile:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /integrations/google-drive/import
+
+  IntegrationsFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${IntegrationsFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  SessionAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - src/functions/authorizer.ts
+    Properties:
+      Description: Lambda authorizer that checks the session token (used by the LaTeX compiler route).
+      Runtime: nodejs22.x
+      Architectures: [!Ref Architecture]
+      CodeUri: ./
+      Handler: authorizer.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt Table.Arn
+
+  SessionAuthorizerFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${SessionAuthorizerFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+  # LaTeX compiler: container image with Tectonic and a pre-warmed package cache.
+  # LaTeX can read files on the machine it runs on, so this function gets no
+  # secrets (the Globals values are blanked) and no permissions beyond logging.
+  LatexFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: latex/Dockerfile
+      DockerContext: .
+      DockerTag: tectonic-0.17.0
+    Properties:
+      Description: Compiles LaTeX resumes to PDF in isolation (no data access, no secrets).
+      PackageType: Image
+      Architectures: [x86_64]
+      MemorySize: 2048
+      Timeout: 60
+      EphemeralStorage:
+        Size: 2048
+      Environment:
+        Variables:
+          AUTH_SECRET: ""
+          DATA_ENCRYPTION_KEY: ""
+          GOOGLE_CLIENT_SECRET: ""
+          S3_SECRET_ACCESS_KEY: ""
+          TECTONIC_SEED_CACHE: /opt/tectonic-cache
+      Events:
+        CompileLatex:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /latex/compile
+            Auth:
+              Authorizer: SessionAuthorizer
+
+  LatexFunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LatexFunction}
+      RetentionInDays: !Ref LogRetentionDays
+
+Outputs:
+  ApiUrl:
+    Description: Base URL for the frontend's NEXT_PUBLIC_API_URL
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  TableName:
+    Description: DynamoDB table
+    Value: !Ref Table
+  DocumentsBucketName:
+    Description: Private S3 bucket for uploaded files
+    Value: !Ref DocumentsBucket

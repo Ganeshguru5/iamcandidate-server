@@ -1,0 +1,30 @@
+{
+  "version": "2.0",
+  "routeKey": "POST /documents/upload-url",
+  "rawPath": "/documents/upload-url",
+  "rawQueryString": "",
+  "headers": {
+    "content-type": "application/json",
+    "origin": "http://localhost:3000"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "local",
+    "domainName": "localhost",
+    "domainPrefix": "localhost",
+    "http": {
+      "method": "POST",
+      "path": "/documents/upload-url",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "127.0.0.1",
+      "userAgent": "sam-local"
+    },
+    "requestId": "local",
+    "routeKey": "POST /documents/upload-url",
+    "stage": "$default",
+    "time": "19/Oct/2026:12:00:00 +0000",
+    "timeEpoch": 1792411200000
+  },
+  "body": "{\"fileName\":\"resume.pdf\",\"contentType\":\"application/pdf\",\"sizeBytes\":120000}",
+  "isBase64Encoded": false
+}

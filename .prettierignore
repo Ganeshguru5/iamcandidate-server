@@ -1,0 +1,6 @@
+.aws-sam
+.local
+.tools
+coverage
+node_modules
+package-lock.json

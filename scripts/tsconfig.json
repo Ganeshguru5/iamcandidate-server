@@ -1,0 +1,12 @@
+{
+  "//": "Used only by the seed script so it can import the frontend's seed data (`@/*` aliases). Type-checking it also verifies the frontend types still match src/models.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "noUncheckedIndexedAccess": false,
+    "paths": {
+      "@/*": ["../../knot/src/*"]
+    }
+  },
+  "include": ["seed.ts", "seed-data.ts", "dev-server.ts", "local-table.ts", "dynalite.d.ts"]
+}

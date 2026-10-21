@@ -21,11 +21,14 @@ RUN dnf install -y tar gzip fontconfig && dnf clean all \
  && tectonic --version
 
 # Compile the starter template once so its packages are in the image. At
-# runtime the cache is copied to writable /tmp (see src/lib/latex.ts).
+# runtime the cache is copied to writable /tmp (see src/lib/latex.ts). Lambda
+# runs as a non-root user and Tectonic writes some files owner-only, so open up
+# read access or the copy fails with EACCES.
 COPY latex/starter-resume.tex /tmp/warm/main.tex
 RUN cd /tmp/warm \
  && TECTONIC_CACHE_DIR=/opt/tectonic-cache tectonic --chatter minimal main.tex \
- && rm -rf /tmp/warm
+ && rm -rf /tmp/warm \
+ && chmod -R a+rX /opt/tectonic-cache
 
 COPY --from=build /build/dist/latex.js /build/dist/latex.js.map ${LAMBDA_TASK_ROOT}/
 ENV NODE_OPTIONS=--enable-source-maps

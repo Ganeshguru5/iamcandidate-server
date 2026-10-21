@@ -1247,6 +1247,16 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${SessionAuthorizerFunction}
       RetentionInDays: !Ref LogRetentionDays
 
+  # SAM doesn't grant API Gateway invoke rights for an authorizer given by
+  # FunctionArn; without this every authorized route returns 500.
+  SessionAuthorizerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SessionAuthorizerFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/authorizers/*
+
   # LaTeX compiler: container image with Tectonic and a pre-warmed package cache.
   # LaTeX can read files on the machine it runs on, so this function gets no
   # secrets (the Globals values are blanked) and no permissions beyond logging.

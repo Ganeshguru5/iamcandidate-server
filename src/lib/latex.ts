@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process"
-import { cp, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { cp, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -55,10 +55,18 @@ function prepareCache(): Promise<string | undefined> {
     try {
       await stat(target)
     } catch {
-      await cp(seed, target, { recursive: true })
+      // Copy aside and rename, so a failed copy never leaves a half-filled cache.
+      const partial = `${target}.partial`
+      await rm(partial, { recursive: true, force: true })
+      await cp(seed, partial, { recursive: true })
+      await rename(partial, target)
     }
     return target
   })()
+  // Let the next compile retry instead of failing for the container's lifetime.
+  cacheReady.catch(() => {
+    cacheReady = undefined
+  })
   return cacheReady
 }
 

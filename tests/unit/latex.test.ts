@@ -70,6 +70,43 @@ describe("POST /latex/compile", () => {
       expect(res.body.data?.sizeBytes).toBe(pdf.byteLength)
     }, 120_000)
 
+    it("gives pdfLaTeX font packages real bold and italics, like Overleaf", async () => {
+      const compile = (preamble: string, text = String.raw`A \textbf{B} \textit{C} -- e`) =>
+        call<{ log: string }>(handler, "POST", "/latex/compile", {
+          body: {
+            source: [
+              String.raw`\documentclass{article}`,
+              preamble,
+              String.raw`\begin{document}`,
+              text,
+              String.raw`\end{document}`,
+              "",
+            ].join("\n"),
+          },
+        })
+      const fellBack = /Font shape `TU\/bch\/[a-z]+\/[a-z]+' undefined/
+
+      // Plain ASCII: T1 and the Type 1 Charter files Overleaf uses (same line breaks).
+      const ascii = await compile(String.raw`\usepackage{charter}`)
+      expect(ascii.status).toBe(200)
+      expect(ascii.body.data?.log).not.toMatch(fellBack)
+      expect(ascii.body.data?.log).not.toContain("XCharter")
+
+      // Typed Unicode: the OpenType XCharter, which can show every character.
+      const unicode = await compile(
+        String.raw`\usepackage{charter}`,
+        String.raw`A \textbf{B} \textit{C} – é €`,
+      )
+      expect(unicode.status).toBe(200)
+      expect(unicode.body.data?.log).toContain("Font family 'XCharter(0)' created")
+      expect(unicode.body.data?.log).not.toMatch(fellBack)
+      expect(unicode.body.data?.log).not.toContain("Missing character")
+
+      // Documents without such packages are untouched.
+      const plain = await compile("")
+      expect(plain.body.data?.log).not.toContain("fontspec")
+    }, 240_000)
+
     it("returns the LaTeX error with its line number", async () => {
       const source =
         "\\documentclass{article}\n\\begin{document}\nHello \\notacommand\n\\end{document}\n"

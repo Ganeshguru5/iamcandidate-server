@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { AppError } from "./errors"
+import { PDFTEX_FONTS_FILE, PDFTEX_FONTS_SOURCE, wrapperSource } from "./latex-fonts"
 import { logger } from "./logger"
 
 /**
@@ -126,7 +127,11 @@ async function compileNow(source: string): Promise<CompileResult> {
   const tectonic = process.env.TECTONIC_PATH || "tectonic"
   const dir = await mkdtemp(join(tmpdir(), "latex-"))
   try {
-    await writeFile(join(dir, "main.tex"), source, "utf8")
+    // main.tex loads the pdfLaTeX font compatibility layer, then the document
+    // from its own file (\jobname and the output stay "main").
+    await writeFile(join(dir, "document.tex"), source, "utf8")
+    await writeFile(join(dir, PDFTEX_FONTS_FILE), PDFTEX_FONTS_SOURCE, "utf8")
+    await writeFile(join(dir, "main.tex"), wrapperSource(source, "document.tex"), "utf8")
     const cacheDir = await prepareCache()
     let result: Awaited<ReturnType<typeof run>>
     try {

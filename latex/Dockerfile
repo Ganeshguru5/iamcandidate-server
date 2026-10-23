@@ -23,10 +23,13 @@ RUN dnf install -y tar gzip fontconfig && dnf clean all \
 # Compile the starter template once so its packages are in the image. At
 # runtime the cache is copied to writable /tmp (see src/lib/latex.ts). Lambda
 # runs as a non-root user and Tectonic writes some files owner-only, so open up
-# read access or the copy fails with EACCES.
+# read access or the copy fails with EACCES. font-warmup.tex adds the OpenType
+# fonts swapped in for pdfLaTeX font packages (src/lib/latex-fonts.ts).
 COPY latex/starter-resume.tex /tmp/warm/main.tex
+COPY latex/font-warmup.tex /tmp/warm/fonts.tex
 RUN cd /tmp/warm \
  && TECTONIC_CACHE_DIR=/opt/tectonic-cache tectonic --chatter minimal main.tex \
+ && TECTONIC_CACHE_DIR=/opt/tectonic-cache tectonic --chatter minimal fonts.tex \
  && rm -rf /tmp/warm \
  && chmod -R a+rX /opt/tectonic-cache
 

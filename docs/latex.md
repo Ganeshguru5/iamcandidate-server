@@ -63,3 +63,18 @@ you trust there.
 `latex/starter-resume.tex` (also baked into the image) uses `article` with `geometry`,
 `hyperref`, `enumitem`, `titlesec`, `xcolor` and `tabularx`. Other packages (moderncv,
 fontawesome5, …) work too; their first use downloads them.
+
+## Overleaf templates and pdfLaTeX font packages
+
+Tectonic is XeTeX; Overleaf defaults to pdfLaTeX. Font packages such as `charter`, `times`,
+`palatino` or `helvet` only work in pdfLaTeX's T1 encoding — under XeTeX they silently fall
+back to Latin Modern regular, losing all bold and italics (common in RenderCV/Jake's-style
+resume templates). `src/lib/latex-fonts.ts` handles this without touching the document:
+
+- **Plain-ASCII source:** T1 is loaded first, so the package uses the same Type 1 fonts as
+  Overleaf and line breaks match exactly.
+- **Source with typed Unicode** (`–`, `é`, `€`): the OpenType equivalent is swapped in
+  (XCharter, TeX Gyre Termes/Pagella/Heros/…) so no character goes missing.
+
+Documents that use `fontspec` or none of these packages compile exactly as written.
+`latex/font-warmup.tex` bakes those OpenType fonts into the Lambda image's package cache.

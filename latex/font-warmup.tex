@@ -1,0 +1,20 @@
+% Compiled once at image build time (latex/Dockerfile) so fontspec and the
+% OpenType fonts that src/lib/latex-fonts.ts swaps in for pdfLaTeX font
+% packages are already in the package cache — no download on first use.
+\documentclass{article}
+\usepackage{fontspec}
+\newcommand{\sample}[5]{%
+  \setfontfamily\f{#1}[Extension=.otf, UprightFont=*#2, BoldFont=*#3,
+    ItalicFont=*#4, BoldItalicFont=*#5]%
+  {\f Regular \textbf{Bold} \textit{Italic} \textbf{\textit{BoldItalic}}}\par}
+\newcommand{\gyre}[1]{\sample{texgyre#1}{-regular}{-bold}{-italic}{-bolditalic}}
+\begin{document}
+\sample{XCharter}{-Roman}{-Bold}{-Italic}{-BoldItalic}
+\gyre{termes}
+\gyre{pagella}
+\gyre{bonum}
+\gyre{schola}
+\gyre{heros}
+\gyre{adventor}
+\gyre{cursor}
+\end{document}

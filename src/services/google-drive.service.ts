@@ -1,15 +1,14 @@
 import { getConfig } from "../lib/config"
-import { AppError, BadRequestError, ConflictError } from "../lib/errors"
+import { AppError, BadRequestError } from "../lib/errors"
 import {
   authorizationUrl,
   createState,
+  DRIVE_SCOPES,
   downloadFile,
   exchangeCode,
   fetchUserEmail,
   getFile,
-  GoogleGrantError,
   listFolder,
-  refreshAccessToken,
   revokeToken,
   verifyState,
   type DriveFile,
@@ -21,6 +20,7 @@ import { settingsRepository } from "../repositories/dynamodb"
 import { MAX_UPLOAD_BYTES } from "../schemas/documents"
 import { activitiesService } from "./activities.service"
 import { documentsService } from "./documents.service"
+import { withGoogle } from "./google-tokens"
 
 const FOLDER = "application/vnd.google-apps.folder"
 
@@ -60,38 +60,9 @@ function toItem(file: DriveFile, parentId: string | null): DriveItem {
   }
 }
 
-/** A valid access token, refreshed and re-stored when it is about to expire. */
-async function accessToken(userId: string): Promise<string> {
-  const stored = await settingsRepository.get(userId, "GOOGLE_DRIVE")
-  if (!stored) throw new ConflictError("Connect Google Drive first.")
-  if (stored.encryptedAccessToken && (stored.accessTokenExpiresAt ?? 0) > Date.now() + 60_000) {
-    return decryptSecret(stored.encryptedAccessToken)
-  }
-  try {
-    const tokens = await refreshAccessToken(decryptSecret(stored.encryptedRefreshToken))
-    await settingsRepository.put(userId, "GOOGLE_DRIVE", {
-      ...stored,
-      encryptedAccessToken: encryptSecret(tokens.accessToken),
-      accessTokenExpiresAt: tokens.expiresAt,
-      // Google may rotate the refresh token.
-      ...(tokens.refreshToken ? { encryptedRefreshToken: encryptSecret(tokens.refreshToken) } : {}),
-    })
-    return tokens.accessToken
-  } catch (error) {
-    if (error instanceof GoogleGrantError) await settingsRepository.remove(userId, "GOOGLE_DRIVE")
-    throw error
-  }
-}
-
-/** Runs a Drive call, dropping the connection if Google says the grant is gone. */
-async function withDrive<T>(userId: string, run: (token: string) => Promise<T>): Promise<T> {
-  const token = await accessToken(userId)
-  try {
-    return await run(token)
-  } catch (error) {
-    if (error instanceof GoogleGrantError) await settingsRepository.remove(userId, "GOOGLE_DRIVE")
-    throw error
-  }
+/** Runs a Drive call with a fresh token (see withGoogle). */
+function withDrive<T>(userId: string, run: (token: string) => Promise<T>): Promise<T> {
+  return withGoogle(userId, "drive", run)
 }
 
 function toStatus(stored: StoredGoogleDrive | undefined): GoogleDriveStatus {
@@ -109,17 +80,17 @@ export const googleDriveService = {
 
   /** Where to send the browser to grant read-only Drive access. */
   authUrl(userId: string): { url: string } {
-    return { url: authorizationUrl(createState(userId)) }
+    return { url: authorizationUrl(createState(userId, "drive"), DRIVE_SCOPES) }
   },
 
   /** Completes the OAuth redirect: verifies state, stores the encrypted tokens. */
   async connect(userId: string, code: string, state: string): Promise<GoogleDriveStatus> {
-    if (!verifyState(state, userId)) {
+    if (!verifyState(state, userId, "drive")) {
       throw new BadRequestError(
         "This Google sign-in has expired or wasn't started here. Connect again.",
       )
     }
-    const tokens = await exchangeCode(code)
+    const tokens = await exchangeCode(code, "drive")
     if (!tokens.refreshToken) {
       throw new AppError(
         502,

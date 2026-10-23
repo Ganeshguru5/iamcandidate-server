@@ -103,7 +103,7 @@ describe("activityRepository", () => {
 describe("settingsRepository", () => {
   it("stores singleton documents per user", async () => {
     expect(await settingsRepository.get("u1", "PROFILE")).toBeUndefined()
-    const profile = { name: "Ganeshguru", email: "g@example.com", role: "", bio: "", location: "" }
+    const profile = { name: "Alex Morgan", email: "g@example.com", role: "", bio: "", location: "" }
     await settingsRepository.put("u1", "PROFILE", profile)
     expect(await settingsRepository.get("u1", "PROFILE")).toEqual(profile)
   })

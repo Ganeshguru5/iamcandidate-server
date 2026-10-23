@@ -99,7 +99,7 @@ describe("settings", () => {
   it("returns defaults, then the saved profile", async () => {
     expect((await call(system, "GET", "/settings/profile")).body.data).toMatchObject({ name: "" })
     const profile = {
-      name: "Ganeshguru",
+      name: "Alex Morgan",
       email: "demo@example.com",
       role: "Engineer",
       bio: "",

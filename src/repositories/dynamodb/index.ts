@@ -18,7 +18,11 @@ import type {
 import { EntityRepository } from "./entity.repository"
 
 export { activityRepository } from "./activity.repository"
-export { notificationReadRepository, settingsRepository } from "./settings.repository"
+export {
+  notificationReadRepository,
+  SECRET_SETTINGS,
+  settingsRepository,
+} from "./settings.repository"
 export { EntityRepository } from "./entity.repository"
 export { normalizeEmail, usersRepository } from "./users.repository"
 

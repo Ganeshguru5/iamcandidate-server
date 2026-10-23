@@ -9,6 +9,7 @@ import { repositories, settingsRepository, usersRepository } from "../repositori
 import { batchDelete, queryPartitionKeys, userPk } from "../repositories/dynamodb/table"
 import { filesRepository } from "../repositories/s3/files.repository"
 import type { CreateUserInput, UpdateUserInput } from "../schemas/users"
+import { templatesService } from "./templates.service"
 
 /** API shape: never includes the password hash. */
 export function toPublicUser({ passwordHash: _passwordHash, ...user }: StoredAccount): UserAccount {
@@ -43,6 +44,16 @@ async function deleteUserData(userId: string) {
   await batchDelete(await queryPartitionKeys(userPk(userId)))
 }
 
+function issueSession(account: StoredAccount) {
+  const secret = getConfig().authSecret
+  if (!secret) throw new Error("AUTH_SECRET is not configured")
+  return {
+    token: createToken(account.id, secret),
+    expiresIn: TOKEN_TTL_SECONDS,
+    user: toPublicUser(account),
+  }
+}
+
 export const usersService = {
   async login(email: string, password: string) {
     const account = await usersRepository.findByEmail(email)
@@ -55,13 +66,12 @@ export const usersService = {
     }
     const now = nowIso()
     const updated = await usersRepository.replace({ ...account, lastLoginAt: now })
-    const secret = getConfig().authSecret
-    if (!secret) throw new Error("AUTH_SECRET is not configured")
-    return {
-      token: createToken(account.id, secret),
-      expiresIn: TOKEN_TTL_SECONDS,
-      user: toPublicUser(updated),
-    }
+    return issueSession(updated)
+  },
+
+  /** A fresh token for an already signed-in user (rolling sessions). */
+  async refresh(userId: string) {
+    return issueSession(await usersRepository.getOrThrow(userId))
   },
 
   async me(userId: string): Promise<UserAccount> {
@@ -112,6 +122,7 @@ export const usersService = {
       bio: "",
       location: "",
     })
+    await templatesService.ensureDefaults(account.id)
     return toPublicUser(account)
   },
 

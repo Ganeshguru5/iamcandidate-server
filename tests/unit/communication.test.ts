@@ -56,7 +56,7 @@ function settings(overrides: Partial<SmtpSettings> = {}) {
     username: "me@example.com",
     password: "app-password-123",
     encryption: "none",
-    senderName: "Ganeshguru",
+    senderName: "Alex Morgan",
     senderEmail: "me@example.com",
     ...overrides,
   }
@@ -66,7 +66,7 @@ const compose = (overrides: Record<string, unknown> = {}) => ({
   to: ["Recruiter@Acme.example"],
   cc: [],
   subject: "Following up",
-  body: "Hi Priya,\n\nThanks for your time.",
+  body: "Hi Maya,\n\nThanks for your time.",
   ...overrides,
 })
 
@@ -140,8 +140,8 @@ describe("sending", () => {
   it("delivers through the user's SMTP account and tracks the email", async () => {
     await call(handler, "PUT", "/settings/smtp", { body: settings() })
     const contact: Contact = {
-      id: "ct_priya",
-      name: "Priya Raman",
+      id: "ct_maya",
+      name: "Maya Patel",
       role: "Recruiter",
       email: "recruiter@acme.example",
       relationship: "recruiter",
@@ -185,7 +185,7 @@ describe("sending", () => {
     expect(res.status).toBe(201)
     expect(res.body.data).toMatchObject({
       folder: "sent",
-      from: { name: "Ganeshguru", email: "me@example.com" },
+      from: { name: "Alex Morgan", email: "me@example.com" },
       to: ["recruiter@acme.example"],
       applicationId: "app_acme",
     })
@@ -201,14 +201,14 @@ describe("sending", () => {
     // Tracked.
     const sent = await call<Email[]>(handler, "GET", "/emails", { query: { folder: "sent" } })
     expect(sent.body.data).toHaveLength(1)
-    expect((await repositories.contacts.get("usr_test", "ct_priya"))?.lastContacted).toBe(
+    expect((await repositories.contacts.get("usr_test", "ct_maya"))?.lastContacted).toBe(
       res.body.data?.date,
     )
     const timeline = (await repositories.applications.get("usr_test", "app_acme"))?.timeline ?? []
     expect(timeline.at(-1)).toMatchObject({ type: "email", title: "Email sent: Following up" })
     expect((await repositories.templates.get("usr_test", "tpl_follow"))?.usageCount).toBe(3)
     const feed = await activityRepository.list("usr_test", { limit: 5 })
-    expect(feed.items[0]).toMatchObject({ type: "email_sent", title: "Email sent to Priya Raman" })
+    expect(feed.items[0]).toMatchObject({ type: "email_sent", title: "Email sent to Maya Patel" })
   })
 
   it("reports SMTP failures without storing the email", async () => {
@@ -270,6 +270,8 @@ describe("templates", () => {
       `/templates/${created.body.data?.id}/duplicate`,
     )
     expect(copy.body.data?.name).toBe("Referral ask (copy)")
-    expect((await call<EmailTemplate[]>(handler, "GET", "/templates")).body.data).toHaveLength(2)
+    const list = (await call<EmailTemplate[]>(handler, "GET", "/templates")).body.data ?? []
+    // The two created here, plus the default templates seeded on first list.
+    expect(list.filter((t) => !t.id.startsWith("tpl_default_"))).toHaveLength(2)
   })
 })

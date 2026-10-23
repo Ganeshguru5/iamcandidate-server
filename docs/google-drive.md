@@ -16,13 +16,21 @@ Browser ──"Connect"──► GET /integrations/google-drive/auth-url ──�
 
 Scopes: `drive.readonly`, `openid`, `email`. Nothing is ever written to the user's Drive.
 
+**Google Calendar** uses the same OAuth client and the same redirect URI, with its own
+consent and tokens (scope `calendar.events`). The signed `state` says which integration
+started the sign-in, and the callback page finishes the right one. To enable it, also turn on
+the **Google Calendar API** (step 2 below) and add `.../auth/calendar.events` to the consent
+screen's scopes (step 3).
+
 ## 1. Create the Google OAuth client (one time, ~10 minutes)
 
 1. Open <https://console.cloud.google.com/> and create a project (e.g. "knot").
-2. **APIs & Services → Library** → search **Google Drive API** → **Enable**.
+2. **APIs & Services → Library** → search **Google Drive API** → **Enable**. For Calendar
+   sync, also enable **Google Calendar API**.
 3. **APIs & Services → OAuth consent screen** (Google Auth Platform):
    - User type **External**, app name "knot", your email as support and developer contact.
-   - **Data access / Scopes**: add `.../auth/drive.readonly`, `openid`, `.../auth/userinfo.email`.
+   - **Data access / Scopes**: add `.../auth/drive.readonly`, `openid`, `.../auth/userinfo.email`,
+     and `.../auth/calendar.events` for Calendar sync.
    - **Audience → Test users**: add every Google account that will connect (e.g. your Gmail).
      While the app is in _Testing_, only these accounts can sign in.
 4. **Clients → Create client** → type **Web application**:

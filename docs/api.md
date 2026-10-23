@@ -37,12 +37,16 @@ value of `new Date().getTimezoneOffset()` in the browser (IST = `-330`).
 Every route except `POST /auth/login` requires `Authorization: Bearer <token>`.
 
 ```
-POST /auth/login   { email, password }  → 200 { token, expiresIn: 43200, user }
+POST /auth/login     { email, password }  → 200 { token, expiresIn: 31536000, user }
+POST /auth/refresh   (signed in)          → 200 { token, expiresIn: 31536000, user }
 ```
 
-- Tokens are HS256-signed with `AUTH_SECRET` and expire after 12 hours. They carry only the
+- Tokens are HS256-signed with `AUTH_SECRET` and expire after 365 days. They carry only the
   user id; the account is re-read on every request, so a disabled or deleted user (or a role
   change) takes effect immediately.
+- Sessions roll: the web app and the browser extension swap their token for a fresh one via
+  `/auth/refresh` at most once a day, so users stay signed in until they sign out. Only a
+  session left unused for a year expires. To end every session at once, rotate `AUTH_SECRET`.
 - Passwords are hashed with scrypt. Wrong email and wrong password return the same 401.
 - All data is scoped to the signed-in user — each user has their own applications, documents,
   settings and so on.
@@ -137,7 +141,24 @@ encrypted with AES-256-GCM (`DATA_ENCRYPTION_KEY`) and never returned.
 | `GET /emails?folder=&applicationId=&contactId=`   | Sent mail and drafts, newest first                                                                                                           |
 | `PUT /emails/{id}`                                | `{ read?, starred? }`                                                                                                                        |
 | `DELETE /emails/{id}`                             | 204                                                                                                                                          |
-| `/templates`                                      | Standard CRUD, plus `POST /templates/{id}/duplicate`                                                                                         |
+| `/templates`                                      | Standard CRUD, plus `POST /templates/{id}/duplicate` and `POST /templates/defaults` (re-add deleted defaults → `{ added, templates }`)       |
+
+Templates have a `channel`: `email` (sent from knot) or `linkedin` (filled in, copied and pasted
+into LinkedIn; `subject` is empty). Templates created without a channel, and ones from before
+channels existed, are `email`.
+
+Every account starts with default templates, defined in `src/lib/default-templates.ts`:
+
+- **Email (10):** referral request, follow-up and thank-you, recruiter and hiring-manager
+  outreach, application follow-up, interview availability and thank-you, feedback request,
+  withdrawal.
+- **LinkedIn (7):** referral and recruiter connection notes (under LinkedIn's 300-character limit
+  when filled), referral requests (cold and to someone you know), referral follow-up and
+  thank-you, recruiter message.
+
+New accounts get them on creation; existing ones on their first `GET /templates`. Each default
+has a `since` version: to add templates, append them with a new `DEFAULT_TEMPLATES_VERSION`, and
+existing accounts receive only those. A deleted default stays deleted unless restored.
 
 Sending is tracked: the email is stored in **Sent**, the linked application gets an
 `email` timeline event, the matching contact's `lastContacted` is updated, the template's
@@ -177,6 +198,79 @@ Read-only access to the user's own Drive; see [google-drive.md](google-drive.md)
 Errors: **409** when Drive isn't connected or Google revoked/expired the grant (the stored
 connection is then removed — reconnect), **502 `INTEGRATION_ERROR`** when Google fails, **400**
 when the server has no Google credentials.
+
+`GET /integrations` returns every integration's status in one call:
+`{ googleDrive, googleCalendar, github, linkedin, aws }`.
+
+## Google Calendar
+
+Puts upcoming interviews (timed, with the meeting link), follow-ups (application, contact and
+open-referral dates, all-day) and open tasks' due dates on the user's primary calendar. Event
+ids are derived from the knot item, so syncing again updates events instead of duplicating them.
+Items that no longer qualify (cancelled, done, past, deleted) are removed on the next sync. At most
+150 events per sync. Uses the Google OAuth client from [google-drive.md](google-drive.md).
+
+| Route                                                |                                                                                      |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `GET /integrations/google-calendar`                  | `{ available, connected, account?, connectedAt?, lastSyncedAt?, lastSync? }`         |
+| `GET /integrations/google-calendar/auth-url`         | `{ url }`, consent for `calendar.events` with a signed `state` (`p: "calendar"`)     |
+| `POST /integrations/google-calendar/connect`         | `{ code, state }` from the shared callback page → status                             |
+| `POST /integrations/google-calendar/sync?tzOffset=`  | Sync now → status with `lastSync: { synced, removed, interviews, followUps, tasks }` |
+| `DELETE /integrations/google-calendar?removeEvents=` | Revoke and forget; `removeEvents=true` first deletes the events knot created         |
+
+## GitHub
+
+Connected with the user's own fine-grained personal access token (read-only: Contents, Metadata,
+Pull requests), stored AES-256-GCM encrypted. A rejected token removes the connection (409).
+
+| Route                                        |                                                                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `GET /integrations/github`                   | `{ connected, account?, name?, avatarUrl?, connectedAt? }`                                                                |
+| `PUT /integrations/github`                   | `{ token }`, checked against GitHub, then stored → status. 400 if GitHub rejects it                                       |
+| `DELETE /integrations/github`                | Forget the token (revoke it on GitHub yourself)                                                                           |
+| `GET /integrations/github/repos`             | Up to 100 repos, most recently pushed first, each with the linked `projectId` if any                                      |
+| `GET /integrations/github/activity?repo=o/n` | `{ repo, commits (10, default branch), pullRequests (10, most recently updated) }`                                        |
+| `POST /integrations/github/import`           | `{ repo }` → 201 Project (name, description, languages + topics, URL, homepage). Returns the linked project if one exists |
+
+Projects link to a repository through their `repository` URL; any github.com URL counts.
+
+## LinkedIn
+
+LinkedIn's API doesn't let other apps read connections or saved jobs, so knot imports the CSV
+files from LinkedIn's "Get a copy of your data" export. The file type is detected from its header.
+
+| File                   | Becomes                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| `Connections.csv`      | Contacts (relationship "professional") and their companies |
+| `Saved Jobs.csv`       | Applications in Wishlist                                   |
+| `Job Applications.csv` | Applications in Applied, with the application date         |
+
+| Route                                |                                                                                                                         |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `GET /integrations/linkedin`         | `{ lastImportAt?, imports: { connections?, saved_jobs?, job_applications? } }`                                          |
+| `POST /integrations/linkedin/import` | `{ csv, dryRun }` (≤ 5 MB, ≤ 5000 rows) → `{ kind, rows, created, skipped, invalid, companiesCreated, sample, dryRun }` |
+
+Rows already in knot are skipped: contacts by LinkedIn URL or exact name, applications by job URL
+or company + role. Companies match by name, ignoring suffixes like "Inc" or "Pvt Ltd". The export
+has no work mode, so imported applications are set to `onsite`.
+
+## AWS S3 backup
+
+Copies the user's data to their own bucket with an access key they provide (secret stored
+encrypted). Each backup writes `<prefix>knot-backup/data/knot-<timestamp>.json`, a JSON export of
+every record without credentials, and copies each document to
+`<prefix>knot-backup/documents/<id>/<name>`, skipping files already there with the same size.
+
+| Route                              |                                                                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `GET /integrations/aws-s3`         | `{ connected, bucket?, region?, prefix?, accessKeyId? (masked), connectedAt?, lastBackup? }`                              |
+| `PUT /integrations/aws-s3`         | `{ bucket, region, prefix, accessKeyId, secretAccessKey }`. Writes a test file first. An empty secret keeps the saved one |
+| `DELETE /integrations/aws-s3`      | Forget the key; existing backups stay in the bucket                                                                       |
+| `POST /integrations/aws-s3/backup` | `{ cursor? }` → `{ done, cursor?, copied, total, bytes, failed, dataKey, summary? }`                                      |
+
+API Gateway allows 30 seconds per request, so a backup runs in steps of about 20 seconds: call
+again with `cursor` until `done`. The key needs `s3:PutObject` and `s3:GetObject` on
+`arn:aws:s3:::<bucket>/<prefix>knot-backup/*`.
 
 ## System
 

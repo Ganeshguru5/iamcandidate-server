@@ -107,8 +107,9 @@ returned by Lambda when CORS is configured, so the template is the single source
 - The bucket is never public. Files are reached only through 5-minute presigned URLs issued
   for the caller's own `users/<userId>/` prefix.
 - Errors returned to clients never include AWS error details; full errors go to CloudWatch.
-- Authentication is built in: scrypt password hashes, 12-hour HS256 session tokens signed with
-  `AuthSecret`, and an account check on every request. Keep `AuthSecret` out of git; non-guided
+- Authentication is built in: scrypt password hashes, rolling HS256 session tokens (365 days,
+  refreshed daily by the clients) signed with `AuthSecret`, and an account check on every
+  request. Keep `AuthSecret` out of git; non-guided
   `sam deploy` needs `--parameter-overrides AuthSecret=...` (or a local, untracked samconfig).
   Changing it signs everyone out.
 - Login is rate-limited only by the API's global throttling; add AWS WAF rate rules if the API

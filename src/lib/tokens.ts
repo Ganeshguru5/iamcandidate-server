@@ -4,8 +4,12 @@ import { createHmac, timingSafeEqual } from "node:crypto"
  * Minimal HS256 JWT for session tokens. Only the user id travels in the token;
  * role and status are read from DynamoDB on every request, so disabling or
  * deleting a user takes effect immediately.
+ *
+ * Sessions roll: clients swap their token for a fresh one via
+ * `POST /auth/refresh` (at most daily), so users stay signed in until they
+ * sign out. The TTL only ends sessions that go unused for a whole year.
  */
-export const TOKEN_TTL_SECONDS = 12 * 60 * 60
+export const TOKEN_TTL_SECONDS = 365 * 24 * 60 * 60
 
 export interface TokenClaims {
   sub: string

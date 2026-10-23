@@ -14,6 +14,7 @@ export const authRoutes: Routes = {
     const { email, password } = validate(loginInput, ctx.body, "request body")
     return ok(await usersService.login(email, password))
   },
+  "POST /auth/refresh": async (ctx) => ok(await usersService.refresh(ctx.userId)),
   "GET /auth/me": async (ctx) => ok(await usersService.me(ctx.userId)),
   "PUT /auth/password": async (ctx) => {
     const body = validate(changePasswordInput, ctx.body, "request body")

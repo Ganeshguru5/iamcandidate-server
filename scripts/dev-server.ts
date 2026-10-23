@@ -22,6 +22,7 @@ import { pipeline } from "node:stream/promises"
 
 import dynalite from "dynalite"
 
+import { PUBLIC_PRICING_ROUTES, pricingRoutes } from "../src/handlers/pricing"
 import { authRoutes, PUBLIC_ROUTES, userRoutes } from "../src/handlers/users"
 import {
   applicationRoutes,
@@ -31,7 +32,7 @@ import {
   referralRoutes,
 } from "../src/handlers/career"
 import { emailRoutes, smtpRoutes, templateRoutes } from "../src/handlers/communication"
-import { googleDriveRoutes } from "../src/handlers/integrations"
+import { integrationRoutes } from "../src/handlers/integrations"
 import { latexRoutes } from "../src/handlers/latex"
 import { documentRoutes, resumeRoutes } from "../src/handlers/documents"
 import { certificationRoutes, linkRoutes, skillRoutes } from "../src/handlers/knowledge"
@@ -127,15 +128,16 @@ const api = createHandler(
     ...dashboardRoutes,
     ...authRoutes,
     ...userRoutes,
+    ...pricingRoutes,
     ...emailRoutes,
     ...templateRoutes,
     ...smtpRoutes,
-    ...googleDriveRoutes,
+    ...integrationRoutes,
     // In AWS this route is an isolated Lambda behind an authorizer; here it is
     // a normal signed-in route that runs Tectonic on this machine.
     ...latexRoutes,
   },
-  { publicRoutes: PUBLIC_ROUTES },
+  { publicRoutes: [...PUBLIC_ROUTES, ...PUBLIC_PRICING_ROUTES] },
 )
 
 function listen(server: http.Server, port: number, name: string): Promise<void> {

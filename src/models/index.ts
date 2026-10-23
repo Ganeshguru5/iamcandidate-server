@@ -360,6 +360,8 @@ export type ActivityType =
   | "project_updated"
   | "integration_connected"
   | "integration_disconnected"
+  | "integration_synced"
+  | "data_imported"
   | "drive_synced"
   | "settings_updated"
 
@@ -481,9 +483,16 @@ export const TEMPLATE_CATEGORIES = [
   "other",
 ] as const
 
+/** Where a template is used: emails (sent from knot) or LinkedIn messages (copied). */
+export const TEMPLATE_CHANNELS = ["email", "linkedin"] as const
+export type TemplateChannel = (typeof TEMPLATE_CHANNELS)[number]
+
 export interface EmailTemplate extends Entity {
   name: string
   category: (typeof TEMPLATE_CATEGORIES)[number]
+  /** Missing on templates created before channels existed: treat as "email". */
+  channel?: TemplateChannel
+  /** Empty for LinkedIn templates. */
   subject: string
   body: string
   usageCount: number
@@ -545,4 +554,214 @@ export interface StoredGoogleDrive {
   accessTokenExpiresAt?: number
   scope: string
   connectedAt: ISODate
+}
+
+/* ------------------------------------------------------------------ */
+/* Google Calendar                                                     */
+/* ------------------------------------------------------------------ */
+
+export interface CalendarSyncSummary {
+  /** Events created or updated. */
+  synced: number
+  /** Events removed because their item was cancelled, completed or deleted. */
+  removed: number
+  interviews: number
+  followUps: number
+  tasks: number
+}
+
+export interface GoogleCalendarStatus {
+  connected: boolean
+  available: boolean
+  account?: string
+  connectedAt?: ISODate
+  lastSyncedAt?: ISODate
+  lastSync?: CalendarSyncSummary
+}
+
+/** Same token storage as Drive, plus the ids of the events knot created. */
+export interface StoredGoogleCalendar extends StoredGoogleDrive {
+  syncedEventIds: string[]
+  lastSyncedAt?: ISODate
+  lastSync?: CalendarSyncSummary
+}
+
+/* ------------------------------------------------------------------ */
+/* GitHub                                                              */
+/* ------------------------------------------------------------------ */
+
+export interface GitHubStatus {
+  connected: boolean
+  /** GitHub username. */
+  account?: string
+  name?: string
+  avatarUrl?: string
+  connectedAt?: ISODate
+}
+
+export interface StoredGitHub {
+  login: string
+  name?: string
+  avatarUrl?: string
+  encryptedToken: string
+  connectedAt: ISODate
+}
+
+export interface GitHubRepo {
+  /** "owner/name" */
+  fullName: string
+  name: string
+  description: string
+  url: string
+  homepage?: string
+  private: boolean
+  fork: boolean
+  archived: boolean
+  language?: string
+  topics: string[]
+  stars: number
+  defaultBranch: string
+  pushedAt?: ISODate
+  /** Id of the knot project whose repository is this repo, if any. */
+  projectId?: ID
+}
+
+export interface GitHubCommit {
+  sha: string
+  message: string
+  author: string
+  date: ISODate
+  url: string
+}
+
+export interface GitHubPullRequest {
+  number: number
+  title: string
+  state: "open" | "closed" | "merged"
+  author: string
+  updatedAt: ISODate
+  url: string
+}
+
+export interface GitHubActivity {
+  repo: GitHubRepo
+  commits: GitHubCommit[]
+  pullRequests: GitHubPullRequest[]
+}
+
+/* ------------------------------------------------------------------ */
+/* LinkedIn (data export import)                                       */
+/* ------------------------------------------------------------------ */
+
+export const LINKEDIN_EXPORT_KINDS = ["connections", "saved_jobs", "job_applications"] as const
+export type LinkedInExportKind = (typeof LINKEDIN_EXPORT_KINDS)[number]
+
+export interface LinkedInImportResult {
+  kind: LinkedInExportKind
+  /** Rows read from the file. */
+  rows: number
+  /** New contacts or applications (would be) created. */
+  created: number
+  /** Rows matching something already in knot. */
+  skipped: number
+  /** Rows without the required columns. */
+  invalid: number
+  companiesCreated: number
+  /** Up to 5 example rows, for the preview. */
+  sample: string[]
+  dryRun: boolean
+}
+
+export interface LinkedInStatus {
+  lastImportAt?: ISODate
+  imports: Partial<Record<LinkedInExportKind, { at: ISODate; created: number }>>
+}
+
+/* ------------------------------------------------------------------ */
+/* AWS S3 backup                                                       */
+/* ------------------------------------------------------------------ */
+
+export interface BackupSummary {
+  at: ISODate
+  /** Key of the JSON data export in the user's bucket. */
+  dataKey: string
+  documents: number
+  bytes: number
+  failed: number
+}
+
+export interface AwsBackupStatus {
+  connected: boolean
+  bucket?: string
+  region?: string
+  prefix?: string
+  accessKeyId?: string
+  connectedAt?: ISODate
+  lastBackup?: BackupSummary
+}
+
+export interface StoredAwsBackup {
+  bucket: string
+  region: string
+  /** "" or a folder ending in "/". */
+  prefix: string
+  accessKeyId: string
+  encryptedSecretAccessKey: string
+  connectedAt: ISODate
+  lastBackup?: BackupSummary
+}
+
+/** One step of a backup; the client calls again with `cursor` until `done`. */
+export interface BackupProgress {
+  done: boolean
+  cursor?: string
+  /** Documents copied so far / total. */
+  copied: number
+  total: number
+  bytes: number
+  failed: number
+  dataKey: string
+  summary?: BackupSummary
+}
+
+/** Connection state of every server-side integration (one request for the Integrations page). */
+export interface IntegrationsOverview {
+  googleDrive: GoogleDriveStatus
+  googleCalendar: GoogleCalendarStatus
+  github: GitHubStatus
+  linkedin: LinkedInStatus
+  aws: AwsBackupStatus
+}
+
+/* ------------------------------------------------------------------ */
+/* Pricing (public page, edited by admins)                             */
+/* ------------------------------------------------------------------ */
+
+export const PRICING_CURRENCIES = ["INR", "USD", "EUR", "GBP"] as const
+export type PricingCurrency = (typeof PRICING_CURRENCIES)[number]
+
+export interface PricingPlan {
+  id: ID
+  name: string
+  tagline: string
+  /** Price per month when billed monthly; 0 = free. */
+  monthlyPrice: number
+  /** Price per month when billed yearly (shown with the yearly toggle). */
+  yearlyPrice: number
+  features: string[]
+  ctaLabel: string
+  /** Where the button goes: a path like /login, a URL, or mailto:. */
+  ctaHref: string
+  /** Shown as "Most popular" and emphasized. */
+  highlighted: boolean
+  /** Hidden plans stay saved but don't appear on the public page. */
+  visible: boolean
+}
+
+export interface PricingConfig {
+  currency: PricingCurrency
+  /** Small print under the plans, e.g. taxes or trial terms. */
+  note: string
+  plans: PricingPlan[]
+  updatedAt?: ISODate
 }

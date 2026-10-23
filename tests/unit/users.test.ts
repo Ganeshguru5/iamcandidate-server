@@ -79,11 +79,37 @@ describe("session checks", () => {
     const forged = createToken("usr_admin", "some-other-secret-of-sufficient-length")
     expect((await call(workspace, "GET", "/tasks", { token: forged })).status).toBe(401)
 
-    const expired = createToken("usr_admin", SECRET, Date.now() - 13 * 60 * 60 * 1000)
+    const DAY = 24 * 60 * 60 * 1000
+    const expired = createToken("usr_admin", SECRET, Date.now() - 366 * DAY)
     expect((await call(workspace, "GET", "/tasks", { token: expired })).status).toBe(401)
+
+    // Tokens outlive the old 12-hour limit.
+    const weekOld = createToken("usr_admin", SECRET, Date.now() - 7 * DAY)
+    expect((await call(workspace, "GET", "/tasks", { token: weekOld })).status).toBe(200)
 
     const valid = await tokenFor("admin@example.com", "admin-pass-1")
     expect((await call(workspace, "GET", "/tasks", { token: valid })).status).toBe(200)
+  })
+
+  it("refreshes a session with a later expiry", async () => {
+    const old = createToken("usr_bob", SECRET, Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const res = await call<{ token: string; expiresIn: number; user: UserAccount }>(
+      users,
+      "POST",
+      "/auth/refresh",
+      { token: old },
+    )
+    expect(res.status).toBe(200)
+    expect(res.body.data?.user).toMatchObject({ id: "usr_bob" })
+    expect(res.body.data?.user).not.toHaveProperty("passwordHash")
+    const fresh = verifyToken(res.body.data?.token as string, SECRET)
+    expect(fresh?.sub).toBe("usr_bob")
+    expect(fresh!.exp).toBeGreaterThan(verifyToken(old, SECRET)!.exp)
+
+    expect((await call(users, "POST", "/auth/refresh")).status).toBe(401)
+    const bob = (await usersRepository.get("usr_bob"))!
+    await usersRepository.replace({ ...bob, disabled: true })
+    expect((await call(users, "POST", "/auth/refresh", { token: old })).status).toBe(401)
   })
 
   it("keeps each user's data separate", async () => {

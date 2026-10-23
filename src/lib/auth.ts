@@ -38,8 +38,8 @@ export async function authenticate(event: APIGatewayProxyEventV2): Promise<Princ
   return { userId: account.id, role: account.role }
 }
 
-export function requireAdmin(principal: Pick<Principal, "role">) {
+export function requireAdmin(principal: Pick<Principal, "role">, action = "manage users") {
   if (principal.role !== "admin") {
-    throw new AppError(403, "FORBIDDEN", "Only admins can manage users")
+    throw new AppError(403, "FORBIDDEN", `Only admins can ${action}`)
   }
 }

@@ -955,6 +955,36 @@ Resources:
             ApiId: !Ref HttpApi
             Method: POST
             Path: /auth/login
+        RefreshSession:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /auth/refresh
+        GetPricing:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /pricing
+        GetAdminPricing:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /admin/pricing
+        SaveAdminPricing:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /admin/pricing
+        ResetAdminPricing:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /admin/pricing/reset
         GetCurrentUser:
           Type: HttpApi
           Properties:
@@ -1110,6 +1140,12 @@ Resources:
             ApiId: !Ref HttpApi
             Method: POST
             Path: /templates/{id}/duplicate
+        RestoreDefaultTemplates:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /templates/defaults
         GetSmtpSettings:
           Type: HttpApi
           Properties:
@@ -1152,7 +1188,7 @@ Resources:
         EntryPoints:
           - src/functions/integrations.ts
     Properties:
-      Description: Google Drive OAuth connect, folder browsing and importing files into Documents.
+      Description: Integrations - Google Drive and Calendar, GitHub, LinkedIn export import and S3 backups.
       Runtime: nodejs22.x
       Architectures: [!Ref Architecture]
       CodeUri: ./
@@ -1168,10 +1204,14 @@ Resources:
                 - dynamodb:PutItem
                 - dynamodb:DeleteItem
                 - dynamodb:Query
+                # LinkedIn imports write contacts and applications in batches.
+                - dynamodb:BatchWriteItem
               Resource: !GetAtt Table.Arn
             - Effect: Allow
               Action:
                 - s3:PutObject
+                # Backups read document files to copy them to the user's own bucket.
+                - s3:GetObject
               Resource: !Sub ${DocumentsBucket.Arn}/users/*
       Events:
         GetGoogleDriveStatus:
@@ -1210,6 +1250,114 @@ Resources:
             ApiId: !Ref HttpApi
             Method: POST
             Path: /integrations/google-drive/import
+        GetIntegrationsOverview:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations
+        GetGoogleCalendarStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/google-calendar
+        GetGoogleCalendarAuthUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/google-calendar/auth-url
+        ConnectGoogleCalendar:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /integrations/google-calendar/connect
+        SyncGoogleCalendar:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /integrations/google-calendar/sync
+        DisconnectGoogleCalendar:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /integrations/google-calendar
+        GetGitHubStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/github
+        ConnectGitHub:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /integrations/github
+        DisconnectGitHub:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /integrations/github
+        ListGitHubRepos:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/github/repos
+        GetGitHubActivity:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/github/activity
+        ImportGitHubRepo:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /integrations/github/import
+        GetLinkedInStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/linkedin
+        ImportLinkedInExport:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /integrations/linkedin/import
+        GetAwsBackupStatus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /integrations/aws-s3
+        ConnectAwsBackup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /integrations/aws-s3
+        DisconnectAwsBackup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /integrations/aws-s3
+        RunAwsBackup:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /integrations/aws-s3/backup
 
   IntegrationsFunctionLogs:
     Type: AWS::Logs::LogGroup

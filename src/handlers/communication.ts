@@ -51,6 +51,8 @@ export const templateRoutes: Routes = {
   ...crudRoutes("/templates", templatesService, { input: templateInput, patch: templatePatch }),
   "POST /templates/{id}/duplicate": async (ctx) =>
     created(await templatesService.duplicate(ctx.userId, pathId(ctx))),
+  /** Re-adds any default templates the user deleted. */
+  "POST /templates/defaults": async (ctx) => ok(await templatesService.restoreDefaults(ctx.userId)),
 }
 
 export const smtpRoutes: Routes = {

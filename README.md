@@ -25,18 +25,18 @@ No AI services are included in this phase.
                    DynamoDB — single table, PK = USER#<id>
 ```
 
-| Function                          | Routes                                                                         |
-| --------------------------------- | ------------------------------------------------------------------------------ |
-| `CareerFunction`                  | `/applications`, `/companies`, `/contacts`, `/referrals`, `/interviews`        |
-| `DocumentsFunction`               | `/documents` (presigned uploads/downloads), `/resumes`                         |
-| `WorkspaceFunction`               | `/projects`, `/tasks`, `/notes`                                                |
-| `KnowledgeFunction`               | `/skills`, `/certifications`, `/links`                                         |
-| `SystemFunction`                  | `/activities`, `/notifications`, `/settings/*`                                 |
-| `DashboardFunction`               | `/dashboard`                                                                   |
-| `UsersFunction`                   | `/auth/*` (sign-in, own password), `/users` (admin user management)            |
-| `CommunicationFunction`           | `/emails` (send via the user's SMTP, drafts), `/templates`, `/settings/smtp`   |
-| `IntegrationsFunction`            | `/integrations/google-drive` (OAuth connect, browse, import into Documents)    |
-| `LatexFunction` (container image) | `POST /latex/compile` — Tectonic, isolated, behind `SessionAuthorizerFunction` |
+| Function                          | Routes                                                                            |
+| --------------------------------- | --------------------------------------------------------------------------------- |
+| `CareerFunction`                  | `/applications`, `/companies`, `/contacts`, `/referrals`, `/interviews`           |
+| `DocumentsFunction`               | `/documents` (presigned uploads/downloads), `/resumes`                            |
+| `WorkspaceFunction`               | `/projects`, `/tasks`, `/notes`                                                   |
+| `KnowledgeFunction`               | `/skills`, `/certifications`, `/links`                                            |
+| `SystemFunction`                  | `/activities`, `/notifications`, `/settings/*`                                    |
+| `DashboardFunction`               | `/dashboard`                                                                      |
+| `UsersFunction`                   | `/auth/*` (sign-in, own password), `/users` (admin user management)               |
+| `CommunicationFunction`           | `/emails` (send via the user's SMTP, drafts), `/templates`, `/settings/smtp`      |
+| `IntegrationsFunction`            | `/integrations/*` — Google Drive and Calendar, GitHub, LinkedIn import, S3 backup |
+| `LatexFunction` (container image) | `POST /latex/compile` — Tectonic, isolated, behind `SessionAuthorizerFunction`    |
 
 ## Quick start (local)
 
@@ -118,5 +118,5 @@ npm run validate        # sam validate --lint
 
 ## Not in this phase
 
-Receiving email (inbox sync), the GitHub/Calendar/LinkedIn integrations, and all AI
-features. The frontend keeps using its mocks for those.
+Receiving email (inbox sync) and all AI features. The frontend keeps using its mocks for
+those.

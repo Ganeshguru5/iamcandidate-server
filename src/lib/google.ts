@@ -5,16 +5,31 @@ import { AppError, BadRequestError } from "./errors"
 import { logger } from "./logger"
 
 /**
- * Minimal Google OAuth 2.0 + Drive v3 REST client built on `fetch` (no
- * googleapis dependency). Read-only Drive access.
+ * Minimal Google OAuth 2.0 + Drive v3 + Calendar v3 REST client built on
+ * `fetch` (no googleapis dependency). Drive is read-only; Calendar can only
+ * manage events. Each integration has its own grant and stored tokens.
  */
 export const DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.readonly", "openid", "email"]
+export const CALENDAR_SCOPES = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "openid",
+  "email",
+]
+
+/** Which integration an OAuth round trip is for. Both share one redirect URI. */
+export type GooglePurpose = "drive" | "calendar"
+
+export const GOOGLE_PRODUCTS: Record<GooglePurpose, string> = {
+  drive: "Google Drive",
+  calendar: "Google Calendar",
+}
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 const TOKEN_URL = "https://oauth2.googleapis.com/token"
 const REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 const USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 const DRIVE_URL = "https://www.googleapis.com/drive/v3"
+const CALENDAR_URL = "https://www.googleapis.com/calendar/v3"
 
 const STATE_TTL_MS = 10 * 60 * 1000
 
@@ -22,7 +37,7 @@ export function googleConfig() {
   const google = getConfig().google
   if (!google) {
     throw new BadRequestError(
-      "Google Drive isn't set up on this server yet (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI).",
+      "Google sign-in isn't set up on this server yet (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI).",
     )
   }
   return google
@@ -30,11 +45,11 @@ export function googleConfig() {
 
 /** Raised when the stored grant no longer works (revoked, expired test app, password change). */
 export class GoogleGrantError extends AppError {
-  constructor() {
+  constructor(product = GOOGLE_PRODUCTS.drive) {
     super(
       409,
       "INTEGRATION_ERROR",
-      "Google Drive access has expired or was revoked. Reconnect Google Drive.",
+      `${product} access has expired or was revoked. Reconnect ${product}.`,
     )
   }
 }
@@ -46,37 +61,56 @@ function sign(payload: string): string {
   return createHmac("sha256", `google-oauth-state:${secret}`).update(payload).digest("base64url")
 }
 
-export function createState(userId: string, now = Date.now()): string {
+/**
+ * The payload is readable (not secret): the frontend callback reads `p` to
+ * know which integration to finish. The signature stops tampering.
+ */
+export function createState(
+  userId: string,
+  purpose: GooglePurpose = "drive",
+  now = Date.now(),
+): string {
   const payload = Buffer.from(
-    JSON.stringify({ u: userId, n: randomBytes(8).toString("hex"), e: now + STATE_TTL_MS }),
+    JSON.stringify({
+      u: userId,
+      p: purpose,
+      n: randomBytes(8).toString("hex"),
+      e: now + STATE_TTL_MS,
+    }),
   ).toString("base64url")
   return `${payload}.${sign(payload)}`
 }
 
-export function verifyState(state: string, userId: string, now = Date.now()): boolean {
+export function verifyState(
+  state: string,
+  userId: string,
+  purpose: GooglePurpose = "drive",
+  now = Date.now(),
+): boolean {
   const [payload, signature] = state.split(".")
   if (!payload || !signature) return false
   const expected = Buffer.from(sign(payload))
   const actual = Buffer.from(signature)
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return false
   try {
-    const { u, e } = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+    const { u, p, e } = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
       u: string
+      p?: GooglePurpose
       e: number
     }
-    return u === userId && e > now
+    return u === userId && (p ?? "drive") === purpose && e > now
   } catch {
     return false
   }
 }
 
-export function authorizationUrl(state: string): string {
+export function authorizationUrl(state: string, scopes: string[] = DRIVE_SCOPES): string {
   const { clientId, redirectUri } = googleConfig()
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: DRIVE_SCOPES.join(" "),
+    scope: scopes.join(" "),
     access_type: "offline",
     // Always show consent so Google returns a refresh token.
     prompt: "consent",
@@ -120,7 +154,10 @@ export interface TokenSet {
   scope: string
 }
 
-async function tokenRequest(params: Record<string, string>): Promise<TokenSet> {
+async function tokenRequest(
+  params: Record<string, string>,
+  purpose: GooglePurpose,
+): Promise<TokenSet> {
   const { clientId, clientSecret } = googleConfig()
   const response = await googleFetch(
     TOKEN_URL,
@@ -134,7 +171,7 @@ async function tokenRequest(params: Record<string, string>): Promise<TokenSet> {
   if (!response.ok) {
     const { error, message } = await errorBody(response)
     logger.warn("Google token error", { status: response.status, error, message })
-    if (error === "invalid_grant") throw new GoogleGrantError()
+    if (error === "invalid_grant") throw new GoogleGrantError(GOOGLE_PRODUCTS[purpose])
     throw new AppError(
       502,
       "INTEGRATION_ERROR",
@@ -155,16 +192,18 @@ async function tokenRequest(params: Record<string, string>): Promise<TokenSet> {
   }
 }
 
-export function exchangeCode(code: string): Promise<TokenSet> {
-  return tokenRequest({
-    code,
-    grant_type: "authorization_code",
-    redirect_uri: googleConfig().redirectUri,
-  })
+export function exchangeCode(code: string, purpose: GooglePurpose = "drive"): Promise<TokenSet> {
+  return tokenRequest(
+    { code, grant_type: "authorization_code", redirect_uri: googleConfig().redirectUri },
+    purpose,
+  )
 }
 
-export function refreshAccessToken(refreshToken: string): Promise<TokenSet> {
-  return tokenRequest({ refresh_token: refreshToken, grant_type: "refresh_token" })
+export function refreshAccessToken(
+  refreshToken: string,
+  purpose: GooglePurpose = "drive",
+): Promise<TokenSet> {
+  return tokenRequest({ refresh_token: refreshToken, grant_type: "refresh_token" }, purpose)
 }
 
 /** Best effort: the connection is removed locally either way. */
@@ -286,4 +325,81 @@ export async function downloadFile(
       ? `${file.name}${exportAs.extension}`
       : file.name
   return { body, mimeType: exportAs?.mimeType ?? file.mimeType, name }
+}
+
+/* Calendar ---------------------------------------------------------- */
+
+export interface CalendarEvent {
+  summary: string
+  description?: string
+  location?: string
+  /** Timed events use `dateTime`; all-day events use `date` (YYYY-MM-DD, end exclusive). */
+  start: { dateTime: string } | { date: string }
+  end: { dateTime: string } | { date: string }
+}
+
+async function calendarRequest(
+  accessToken: string,
+  path: string,
+  init: RequestInit,
+  what: string,
+): Promise<Response> {
+  const response = await googleFetch(
+    `${CALENDAR_URL}${path}`,
+    {
+      ...init,
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        ...(init.body ? { "content-type": "application/json" } : {}),
+      },
+    },
+    what,
+  )
+  if (response.ok || response.status === 404 || response.status === 410) return response
+  const { error, message } = await errorBody(response)
+  logger.warn("Calendar API error", { what, status: response.status, error, message })
+  if (response.status === 401) throw new GoogleGrantError(GOOGLE_PRODUCTS.calendar)
+  if (
+    response.status === 403 &&
+    /has not been used|is disabled|accessNotConfigured/i.test(message ?? "")
+  ) {
+    throw new BadRequestError(
+      "The Google Calendar API isn't enabled for this server's Google Cloud project. Enable it in the Google Cloud console, then sync again.",
+    )
+  }
+  throw new AppError(502, "INTEGRATION_ERROR", "Google Calendar returned an error. Try again.")
+}
+
+/**
+ * Creates or updates the event with our own id in the primary calendar.
+ * Ids are stable per knot item, so syncing again never duplicates events.
+ */
+export async function upsertCalendarEvent(
+  accessToken: string,
+  eventId: string,
+  event: CalendarEvent,
+): Promise<void> {
+  const path = `/calendars/primary/events/${encodeURIComponent(eventId)}`
+  const body = JSON.stringify({ ...event, status: "confirmed" })
+  const updated = await calendarRequest(accessToken, path, { method: "PUT", body }, "update")
+  if (updated.ok) return
+  const created = await calendarRequest(
+    accessToken,
+    "/calendars/primary/events",
+    { method: "POST", body: JSON.stringify({ ...event, id: eventId }) },
+    "insert",
+  )
+  if (!created.ok) {
+    throw new AppError(502, "INTEGRATION_ERROR", "Couldn't create a Google Calendar event.")
+  }
+}
+
+/** Removes an event we created; already-deleted events are fine. */
+export async function deleteCalendarEvent(accessToken: string, eventId: string): Promise<void> {
+  await calendarRequest(
+    accessToken,
+    `/calendars/primary/events/${encodeURIComponent(eventId)}`,
+    { method: "DELETE" },
+    "delete",
+  )
 }

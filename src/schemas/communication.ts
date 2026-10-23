@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { longText, patchSchema, requiredText, shortText } from "../lib/validation"
-import { SMTP_ENCRYPTIONS, TEMPLATE_CATEGORIES } from "../models"
+import { SMTP_ENCRYPTIONS, TEMPLATE_CATEGORIES, TEMPLATE_CHANNELS } from "../models"
 
 const entityId = z.string().trim().min(1).max(128)
 const address = z.string().trim().toLowerCase().pipe(z.email().max(254))
@@ -40,6 +40,8 @@ export const emailQuery = z.object({
 export const templateInput = z.strictObject({
   name: requiredText(),
   category: z.enum(TEMPLATE_CATEGORIES),
+  /** Defaults to "email" on create (see templates.service). */
+  channel: z.enum(TEMPLATE_CHANNELS).optional(),
   subject: shortText(998),
   body: longText(50_000),
 })

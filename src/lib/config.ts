@@ -8,6 +8,10 @@ export interface Config {
   region: string
   tableName: string
   bucketName: string
+  /** Public-read bucket for portfolio images (uploads are off when unset). */
+  portfolioBucketName: string | undefined
+  /** Base URL those images are served from, e.g. https://<bucket>.s3.<region>.amazonaws.com. */
+  portfolioAssetsUrl: string | undefined
   dynamodbEndpoint: string | undefined
   s3Endpoint: string | undefined
   s3PublicEndpoint: string | undefined
@@ -55,6 +59,8 @@ export function getConfig(): Config {
     region: optional("AWS_REGION") ?? "ap-south-1",
     tableName: required("DYNAMODB_TABLE"),
     bucketName: required("S3_BUCKET"),
+    portfolioBucketName: optional("PORTFOLIO_BUCKET"),
+    portfolioAssetsUrl: optional("PORTFOLIO_ASSETS_URL")?.replace(/\/+$/, ""),
     dynamodbEndpoint: optional("DYNAMODB_ENDPOINT"),
     s3Endpoint: optional("S3_ENDPOINT"),
     s3PublicEndpoint: optional("S3_PUBLIC_ENDPOINT") ?? optional("S3_ENDPOINT"),

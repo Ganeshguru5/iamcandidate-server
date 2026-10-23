@@ -19,7 +19,7 @@ confirm_changeset = true
 resolve_s3 = true
 resolve_image_repos = true
 s3_prefix = "personal-os-dev"
-parameter_overrides = "Stage=\"dev\" AllowedOrigins=\"http://localhost:3000,https://knot-ui-eight.vercel.app\""
+parameter_overrides = "Stage=\"dev\" AllowedOrigins=\"http://localhost:3000,http://localhost:3002,https://knot-ui-eight.vercel.app,https://meganeshguru.web.app,https://meganeshguru.firebaseapp.com\""
 
 # Production: `sam deploy --config-env prod`
 [prod.global.parameters]

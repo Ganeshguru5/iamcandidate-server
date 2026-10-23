@@ -22,6 +22,7 @@ import { pipeline } from "node:stream/promises"
 
 import dynalite from "dynalite"
 
+import { PUBLIC_PORTFOLIO_ROUTES, portfolioRoutes } from "../src/handlers/portfolio"
 import { PUBLIC_PRICING_ROUTES, pricingRoutes } from "../src/handlers/pricing"
 import { authRoutes, PUBLIC_ROUTES, userRoutes } from "../src/handlers/users"
 import {
@@ -79,9 +80,13 @@ Object.assign(process.env, {
   S3_BUCKET: "personal-os-documents-local",
   S3_ENDPOINT: `http://localhost:${S3_PORT}`,
   S3_PUBLIC_ENDPOINT: `http://localhost:${S3_PORT}`,
+  // Portfolio images: served straight from the local S3 stand-in.
+  PORTFOLIO_BUCKET: "personal-os-portfolio-local",
+  PORTFOLIO_ASSETS_URL: `http://localhost:${S3_PORT}/personal-os-portfolio-local`,
   S3_ACCESS_KEY_ID: "local",
   S3_SECRET_ACCESS_KEY: "local",
-  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ?? "http://localhost:3000",
+  // 3002: the ganesh-portfolio site, run alongside the knot UI on 3000.
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ?? "http://localhost:3000,http://localhost:3002",
   DEFAULT_USER_ID: "usr_demo",
   AUTH_SECRET: process.env.AUTH_SECRET ?? localSecret("AUTH_SECRET"),
   DATA_ENCRYPTION_KEY: process.env.DATA_ENCRYPTION_KEY ?? localSecret("DATA_ENCRYPTION_KEY"),
@@ -129,6 +134,7 @@ const api = createHandler(
     ...authRoutes,
     ...userRoutes,
     ...pricingRoutes,
+    ...portfolioRoutes,
     ...emailRoutes,
     ...templateRoutes,
     ...smtpRoutes,
@@ -137,7 +143,7 @@ const api = createHandler(
     // a normal signed-in route that runs Tectonic on this machine.
     ...latexRoutes,
   },
-  { publicRoutes: [...PUBLIC_ROUTES, ...PUBLIC_PRICING_ROUTES] },
+  { publicRoutes: [...PUBLIC_ROUTES, ...PUBLIC_PRICING_ROUTES, ...PUBLIC_PORTFOLIO_ROUTES] },
 )
 
 function listen(server: http.Server, port: number, name: string): Promise<void> {
@@ -221,7 +227,7 @@ function s3Server(root: string): http.Server {
     // Presigned URLs are not signature-checked locally; this only runs on localhost.
     res.setHeader("access-control-allow-origin", req.headers.origin ?? "*")
     res.setHeader("access-control-allow-methods", "GET,PUT,HEAD,DELETE,OPTIONS")
-    res.setHeader("access-control-allow-headers", "content-type")
+    res.setHeader("access-control-allow-headers", "content-type,cache-control")
     res.setHeader("access-control-expose-headers", "ETag")
     if (req.method === "OPTIONS") return void res.writeHead(204).end()
 

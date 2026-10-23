@@ -59,6 +59,17 @@ Parameters:
     Description: >-
       Lambda CPU architecture. arm64 (Graviton) is cheaper in AWS; `npm run start` passes
       x86_64 so `sam local` doesn't emulate ARM on Intel/AMD machines.
+  PortfolioBucketName:
+    Type: String
+    Default: ganesh-portfolio-images-321323327217
+    Description: >-
+      Existing public-read S3 bucket for portfolio images (managed outside this stack).
+      Its policy must allow public s3:GetObject on portfolio/* and its CORS must allow
+      PUT from the frontend origins.
+  PortfolioAssetsUrl:
+    Type: String
+    Default: https://ganesh-portfolio-images-321323327217.s3.ap-south-1.amazonaws.com
+    Description: Public base URL the portfolio images are served from (S3 or a CDN in front of it).
   LogRetentionDays:
     Type: Number
     Default: 30
@@ -75,6 +86,8 @@ Globals:
         STAGE: !Ref Stage
         DYNAMODB_TABLE: !Ref Table
         S3_BUCKET: !Ref DocumentsBucket
+        PORTFOLIO_BUCKET: !Ref PortfolioBucketName
+        PORTFOLIO_ASSETS_URL: !Ref PortfolioAssetsUrl
         ALLOWED_ORIGINS: !Join [",", !Ref AllowedOrigins]
         DEFAULT_USER_ID: !Ref DefaultUserId
         AUTH_SECRET: !Ref AuthSecret
@@ -928,7 +941,7 @@ Resources:
         EntryPoints:
           - src/functions/users.ts
     Properties:
-      Description: Sign-in, own account and admin user management.
+      Description: Sign-in, own account, admin user management, pricing and portfolio.
       Runtime: nodejs22.x
       Architectures: [!Ref Architecture]
       CodeUri: ./
@@ -948,6 +961,10 @@ Resources:
               Action:
                 - s3:DeleteObject
               Resource: !Sub ${DocumentsBucket.Arn}/users/*
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub arn:${AWS::Partition}:s3:::${PortfolioBucketName}/portfolio/*
       Events:
         Login:
           Type: HttpApi
@@ -985,6 +1002,24 @@ Resources:
             ApiId: !Ref HttpApi
             Method: POST
             Path: /admin/pricing/reset
+        GetPortfolio:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /portfolio
+        SavePortfolio:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /admin/portfolio
+        CreatePortfolioImageUploadUrl:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /admin/portfolio/upload-url
         GetCurrentUser:
           Type: HttpApi
           Properties:
@@ -1455,3 +1490,6 @@ Outputs:
   DocumentsBucketName:
     Description: Private S3 bucket for uploaded files
     Value: !Ref DocumentsBucket
+  PortfolioImagesUrl:
+    Description: Public base URL for portfolio images
+    Value: !Ref PortfolioAssetsUrl

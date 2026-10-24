@@ -1,7 +1,7 @@
 import { ok } from "../lib/response"
 import type { Routes } from "../lib/router"
 import { validate } from "../lib/validation"
-import { imageUploadInput, portfolioInput } from "../schemas/portfolio"
+import { imageUploadInput, portfolioInput, resumeSyncInput } from "../schemas/portfolio"
 import { portfolioService } from "../services/portfolio.service"
 
 /** Public: the portfolio site reads this without signing in. */
@@ -21,6 +21,12 @@ export const portfolioRoutes: Routes = {
       await portfolioService.createImageUploadUrl(
         validate(imageUploadInput, ctx.body, "request body"),
       ),
+    )
+  },
+  "POST /admin/portfolio/resume": async (ctx) => {
+    await portfolioService.requireOwner(ctx.userId)
+    return ok(
+      await portfolioService.syncResume(ctx.userId, validate(resumeSyncInput, ctx.body, "request body")),
     )
   },
 }

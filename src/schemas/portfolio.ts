@@ -102,6 +102,10 @@ export const imageUploadInput = z.strictObject({
 })
 export type ImageUploadInput = z.output<typeof imageUploadInput>
 
+/** Picks the knot resume whose saved PDF the site's download links serve. */
+export const resumeSyncInput = z.strictObject({ resumeId: requiredText(128) })
+export type ResumeSyncInput = z.output<typeof resumeSyncInput>
+
 export const portfolioInput = z
   .strictObject({
     profile,
@@ -119,5 +123,13 @@ export const portfolioInput = z
   })
 export type PortfolioInput = z.output<typeof portfolioInput>
 
+/** Which knot resume `profile.resumeUrl` was synced from; the site ignores it. */
+export interface PortfolioResumeLink {
+  resumeId: string
+  title: string
+  version: string
+  syncedAt: ISODate
+}
+
 /** What is stored and served. Mirrors `PortfolioContent` in ganesh-portfolio/src/const.ts. */
-export type PortfolioContent = PortfolioInput & { updatedAt?: ISODate }
+export type PortfolioContent = PortfolioInput & { updatedAt?: ISODate; resume?: PortfolioResumeLink }

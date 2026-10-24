@@ -1,11 +1,13 @@
+import { CopyObjectCommand } from "@aws-sdk/client-s3"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { handler } from "../../src/functions/users"
 import { resetConfig } from "../../src/lib/config"
 import { hashPassword } from "../../src/lib/passwords"
-import { usersRepository } from "../../src/repositories/dynamodb"
+import { repositories, usersRepository } from "../../src/repositories/dynamodb"
 import type { PortfolioContent, PortfolioInput } from "../../src/schemas/portfolio"
 import { call } from "../support/http"
+import { testState } from "../support/setup"
 
 const SECRET = "test-secret-that-is-long-enough-for-hmac-signing"
 
@@ -188,6 +190,120 @@ describe("portfolio", () => {
         token: owner,
       })
       expect(res.status).toBe(503)
+    })
+  })
+
+  describe("resume sync", () => {
+    const now = "2026-10-20T00:00:00.000Z"
+
+    async function seedResume(documentId?: string) {
+      await repositories.resumes.create("usr_owner", {
+        id: "res_0000000000000001",
+        title: "LaTeX resume",
+        targetRole: "Software Engineer",
+        version: "v1.3",
+        isDefault: false,
+        summary: "",
+        skills: [],
+        experience: [],
+        education: [],
+        ...(documentId ? { documentId } : {}),
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    async function seedPdf() {
+      await repositories.documents.create("usr_owner", {
+        id: "doc_0000000000000001",
+        name: "resume.pdf",
+        category: "resume",
+        kind: "pdf",
+        sizeBytes: 1024,
+        starred: false,
+        source: "local",
+        mimeType: "application/pdf",
+        s3Key: "users/usr_owner/documents/doc_0000000000000001/resume.pdf",
+        uploadedAt: now,
+        updatedAt: now,
+      })
+    }
+
+    beforeEach(() => {
+      process.env.PORTFOLIO_BUCKET = "personal-os-portfolio-test"
+      process.env.PORTFOLIO_ASSETS_URL = "https://assets.example.com"
+      resetConfig()
+    })
+
+    afterEach(() => {
+      delete process.env.PORTFOLIO_BUCKET
+      delete process.env.PORTFOLIO_ASSETS_URL
+    })
+
+    it("copies the resume PDF to the public bucket and links it", async () => {
+      const sent: unknown[] = []
+      testState.s3Send = async (command) => {
+        sent.push(command)
+        return {}
+      }
+      const owner = await tokenFor("ganeshguru8681@gmail.com")
+      await call(handler, "PUT", "/admin/portfolio", { body: content, token: owner })
+      await seedPdf()
+      await seedResume("doc_0000000000000001")
+
+      const res = await call<PortfolioContent>(handler, "POST", "/admin/portfolio/resume", {
+        body: { resumeId: "res_0000000000000001" },
+        token: owner,
+      })
+      expect(res.status).toBe(200)
+      const url = res.body.data?.profile.resumeUrl
+      expect(url).toMatch(/^https:\/\/assets\.example\.com\/portfolio\/resume_\w+\/Ganeshguru-A-Resume\.pdf$/)
+      expect(res.body.data?.resume).toMatchObject({ resumeId: "res_0000000000000001", version: "v1.3" })
+
+      const copy = sent.find((c) => c instanceof CopyObjectCommand) as CopyObjectCommand
+      expect(copy.input.Bucket).toBe("personal-os-portfolio-test")
+      expect(copy.input.CopySource).toBe(
+        "personal-os-documents-test/users/usr_owner/documents/doc_0000000000000001/resume.pdf",
+      )
+      expect(copy.input.ContentDisposition).toContain("attachment")
+
+      // A later save keeps the link while the URL is unchanged, and drops it once edited.
+      const kept = await call<PortfolioContent>(handler, "PUT", "/admin/portfolio", {
+        body: { ...content, profile: { ...content.profile, resumeUrl: url } },
+        token: owner,
+      })
+      expect(kept.body.data?.resume?.resumeId).toBe("res_0000000000000001")
+      const dropped = await call<PortfolioContent>(handler, "PUT", "/admin/portfolio", {
+        body: content,
+        token: owner,
+      })
+      expect(dropped.body.data?.resume).toBeUndefined()
+    })
+
+    it("needs a saved PDF and a saved portfolio", async () => {
+      const owner = await tokenFor("ganeshguru8681@gmail.com")
+      await seedResume()
+      const unsaved = await call(handler, "POST", "/admin/portfolio/resume", {
+        body: { resumeId: "res_0000000000000001" },
+        token: owner,
+      })
+      expect(unsaved.status).toBe(409)
+
+      await call(handler, "PUT", "/admin/portfolio", { body: content, token: owner })
+      const noPdf = await call(handler, "POST", "/admin/portfolio/resume", {
+        body: { resumeId: "res_0000000000000001" },
+        token: owner,
+      })
+      expect(noPdf.status).toBe(400)
+    })
+
+    it("is owner only", async () => {
+      const admin = await tokenFor("admin@example.com")
+      const res = await call(handler, "POST", "/admin/portfolio/resume", {
+        body: { resumeId: "res_0000000000000001" },
+        token: admin,
+      })
+      expect(res.status).toBe(403)
     })
   })
 })

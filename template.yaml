@@ -960,6 +960,8 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:DeleteObject
+                # Read: a resume PDF is copied into the portfolio bucket.
+                - s3:GetObject
               Resource: !Sub ${DocumentsBucket.Arn}/users/*
             - Effect: Allow
               Action:
@@ -1020,6 +1022,12 @@ Resources:
             ApiId: !Ref HttpApi
             Method: POST
             Path: /admin/portfolio/upload-url
+        SyncPortfolioResume:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /admin/portfolio/resume
         GetCurrentUser:
           Type: HttpApi
           Properties:

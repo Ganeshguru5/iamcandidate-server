@@ -5,7 +5,7 @@
     "baseUrl": ".",
     "noUncheckedIndexedAccess": false,
     "paths": {
-      "@/*": ["../../knot/src/*"]
+      "@/*": ["../../knot/src/*", "../../knot-ui/src/*"]
     }
   },
   "include": ["seed.ts", "seed-data.ts", "dev-server.ts", "local-table.ts", "dynalite.d.ts"]

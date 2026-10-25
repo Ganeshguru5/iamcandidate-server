@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { handler as system } from "../../src/functions/system"
 import { handler as workspace } from "../../src/functions/workspace"
-import type { Activity, AppNotification, Task } from "../../src/models"
+import type { Activity, AppNotification, BoardItem, Task } from "../../src/models"
 import { repositories } from "../../src/repositories/dynamodb"
 import { call } from "../support/http"
 
@@ -41,6 +41,31 @@ describe("notes", () => {
       query: { favorite: "true" },
     })
     expect(favorites.body.data).toHaveLength(1)
+  })
+})
+
+describe("board", () => {
+  const sealed = `v1.${"a".repeat(22)}.${"b".repeat(16)}.${"c".repeat(40)}`
+  const item = { title: "Stripe key", kind: "secret", content: sealed, tags: [], pinned: true, color: "teal" }
+
+  it("stores encrypted secrets and filters pinned items", async () => {
+    expect((await call(workspace, "POST", "/board", { body: item })).status).toBe(201)
+    await call(workspace, "POST", "/board", {
+      body: { ...item, kind: "text", content: "hello", pinned: false },
+    })
+    const pinned = await call<BoardItem[]>(workspace, "GET", "/board", { query: { pinned: "true" } })
+    expect(pinned.body.data).toEqual([expect.objectContaining({ kind: "secret", content: sealed })])
+  })
+
+  it("rejects secrets that are not encrypted", async () => {
+    const plain = await call(workspace, "POST", "/board", { body: { ...item, content: "sk_live_123" } })
+    expect(plain.status).toBe(400)
+
+    const text = (await call<BoardItem>(workspace, "POST", "/board", {
+      body: { ...item, kind: "text", content: "sk_live_123" },
+    })).body.data as BoardItem
+    const flipped = await call(workspace, "PUT", `/board/${text.id}`, { body: { kind: "secret" } })
+    expect(flipped.status).toBe(400)
   })
 })
 

@@ -43,7 +43,7 @@ import {
   notificationRoutes,
   settingsRoutes,
 } from "../src/handlers/system"
-import { noteRoutes, projectRoutes, taskRoutes } from "../src/handlers/workspace"
+import { boardRoutes, noteRoutes, projectRoutes, taskRoutes } from "../src/handlers/workspace"
 import { getConfig } from "../src/lib/config"
 import { createHandler } from "../src/lib/router"
 import { usersRepository } from "../src/repositories/dynamodb"
@@ -124,6 +124,7 @@ const api = createHandler(
     ...projectRoutes,
     ...taskRoutes,
     ...noteRoutes,
+    ...boardRoutes,
     ...skillRoutes,
     ...certificationRoutes,
     ...linkRoutes,

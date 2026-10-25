@@ -567,7 +567,7 @@ Resources:
         EntryPoints:
           - src/functions/workspace.ts
     Properties:
-      Description: Projects, tasks and notes.
+      Description: Projects, tasks, notes and the sync board.
       Runtime: nodejs22.x
       Architectures: [!Ref Architecture]
       CodeUri: ./
@@ -679,6 +679,36 @@ Resources:
             ApiId: !Ref HttpApi
             Method: DELETE
             Path: /notes/{id}
+        ListBoardItems:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /board
+        CreateBoardItem:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /board
+        GetBoardItem:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /board/{id}
+        UpdateBoardItem:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /board/{id}
+        DeleteBoardItem:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /board/{id}
 
   WorkspaceFunctionLogs:
     Type: AWS::Logs::LogGroup

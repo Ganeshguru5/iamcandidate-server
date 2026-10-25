@@ -29,7 +29,7 @@ No AI services are included in this phase.
 | --------------------------------- | --------------------------------------------------------------------------------- |
 | `CareerFunction`                  | `/applications`, `/companies`, `/contacts`, `/referrals`, `/interviews`           |
 | `DocumentsFunction`               | `/documents` (presigned uploads/downloads), `/resumes`                            |
-| `WorkspaceFunction`               | `/projects`, `/tasks`, `/notes`                                                   |
+| `WorkspaceFunction`               | `/projects`, `/tasks`, `/notes`, `/board`                                         |
 | `KnowledgeFunction`               | `/skills`, `/certifications`, `/links`                                            |
 | `SystemFunction`                  | `/activities`, `/notifications`, `/settings/*`                                    |
 | `DashboardFunction`               | `/dashboard`                                                                      |

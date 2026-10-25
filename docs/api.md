@@ -85,6 +85,7 @@ The standard five routes exist for every resource below:
 | Projects       | `/projects`       | `status`                                         |                                                                                                                         |
 | Tasks          | `/tasks`          | `status`, `priority`, `relatedType`, `relatedId` | `POST /tasks/{id}/toggle`                                                                                               |
 | Notes          | `/notes`          | `category`, `favorite=true\|false`               |                                                                                                                         |
+| Board          | `/board`          | `kind`, `pinned=true\|false`                     | `secret` items must be encrypted by the client (`v1.<salt>.<iv>.<data>`); plain values are rejected                    |
 | Skills         | `/skills`         |                                                  |                                                                                                                         |
 | Certifications | `/certifications` |                                                  |                                                                                                                         |
 | Links          | `/links`          | `category`                                       |                                                                                                                         |

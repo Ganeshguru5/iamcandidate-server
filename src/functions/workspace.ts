@@ -1,5 +1,10 @@
 import { createHandler } from "../lib/router"
-import { noteRoutes, projectRoutes, taskRoutes } from "../handlers/workspace"
+import { boardRoutes, noteRoutes, projectRoutes, taskRoutes } from "../handlers/workspace"
 
-/** WorkspaceFunction: projects, tasks, notes. */
-export const handler = createHandler({ ...projectRoutes, ...taskRoutes, ...noteRoutes })
+/** WorkspaceFunction: projects, tasks, notes, sync board. */
+export const handler = createHandler({
+  ...projectRoutes,
+  ...taskRoutes,
+  ...noteRoutes,
+  ...boardRoutes,
+})

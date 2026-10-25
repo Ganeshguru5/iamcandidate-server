@@ -39,6 +39,7 @@ All other attributes are the entity's own fields, stored as top-level attributes
 | Project                  | `PROJECT#<id>`                       |                                                                        |
 | Task                     | `TASK#<id>`                          | optional `related: { type, id, label }`                                |
 | Note                     | `NOTE#<id>`                          |                                                                        |
+| Board item               | `BOARD#<id>`                         | `secret` items hold client-side ciphertext only                        |
 | Skill                    | `SKILL#<id>`                         |                                                                        |
 | Certification            | `CERTIFICATION#<id>`                 | optional `documentId`                                                  |
 | Link (bookmark)          | `LINK#<id>`                          |                                                                        |

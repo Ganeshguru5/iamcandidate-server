@@ -1,6 +1,10 @@
 import { ok } from "../lib/response"
+import type { BoardItem } from "../models"
 import type { Routes } from "../lib/router"
 import {
+  boardItemInput,
+  boardItemPatch,
+  boardQuery,
   noteInput,
   notePatch,
   noteQuery,
@@ -11,6 +15,7 @@ import {
   taskPatch,
   taskQuery,
 } from "../schemas/workspace"
+import { boardService } from "../services/board.service"
 import { filterItems } from "../services/crud"
 import { notesService } from "../services/notes.service"
 import { projectsService } from "../services/projects.service"
@@ -44,4 +49,17 @@ export const noteRoutes: Routes = crudRoutes(
       }),
   },
   { input: noteInput, patch: notePatch, query: noteQuery },
+)
+
+export const boardRoutes: Routes = crudRoutes(
+  "/board",
+  {
+    ...boardService,
+    list: async (userId: string, query: { kind?: BoardItem["kind"]; pinned?: "true" | "false" }) =>
+      filterItems(await boardService.list(userId), {
+        kind: query.kind,
+        pinned: query.pinned === undefined ? undefined : query.pinned === "true",
+      }),
+  },
+  { input: boardItemInput, patch: boardItemPatch, query: boardQuery },
 )

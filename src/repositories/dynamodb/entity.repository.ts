@@ -24,6 +24,7 @@ export type EntityType =
   | "PROJECT"
   | "TASK"
   | "NOTE"
+  | "BOARD"
   | "SKILL"
   | "CERTIFICATION"
   | "LINK"

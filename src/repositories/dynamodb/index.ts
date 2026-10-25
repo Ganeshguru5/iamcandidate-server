@@ -1,5 +1,6 @@
 import type {
   Application,
+  BoardItem,
   Email,
   EmailTemplate,
   Bookmark,
@@ -37,6 +38,7 @@ export const repositories = {
   projects: new EntityRepository<Project>("PROJECT", "Project"),
   tasks: new EntityRepository<Task>("TASK", "Task"),
   notes: new EntityRepository<Note>("NOTE", "Note"),
+  board: new EntityRepository<BoardItem>("BOARD", "Board item"),
   skills: new EntityRepository<Skill>("SKILL", "Skill"),
   certifications: new EntityRepository<Certification>("CERTIFICATION", "Certification"),
   links: new EntityRepository<Bookmark>("LINK", "Link"),

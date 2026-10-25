@@ -2,7 +2,7 @@
   "name": "knot-server",
   "version": "0.1.0",
   "private": true,
-  "description": "knot backend \u2014 AWS SAM, Lambda, API Gateway HTTP API, DynamoDB and S3.",
+  "description": "knot backend — AWS SAM, Lambda, API Gateway HTTP API, DynamoDB and S3.",
   "engines": {
     "node": ">=22"
   },
@@ -31,6 +31,7 @@
     "@aws-sdk/client-s3": "^3.1152.0",
     "@aws-sdk/lib-dynamodb": "^3.1152.0",
     "@aws-sdk/s3-request-presigner": "^3.1152.0",
+    "linkedom": "^0.16.11",
     "nodemailer": "^10.1.7",
     "zod": "^4.6.7"
   },

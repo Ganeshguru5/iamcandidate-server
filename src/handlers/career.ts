@@ -15,6 +15,7 @@ import {
   interviewInput,
   interviewPatch,
   interviewQuery,
+  jobLinkBody,
   referralInput,
   referralPatch,
   referralQuery,
@@ -22,9 +23,11 @@ import {
 } from "../schemas/career"
 import { applicationsService } from "../services/applications.service"
 import { companiesService } from "../services/companies.service"
+import { contactExtractService } from "../services/contact-extract.service"
 import { contactsService } from "../services/contacts.service"
 import { filterItems } from "../services/crud"
 import { interviewsService } from "../services/interviews.service"
+import { jobExtractService } from "../services/job-extract.service"
 import { referralsService } from "../services/referrals.service"
 import { crudRoutes, pathId } from "./crud"
 
@@ -47,6 +50,11 @@ export const applicationRoutes: Routes = {
     const { status } = validate(applicationStatusBody, ctx.body, "request body")
     return ok(await applicationsService.changeStatus(ctx.userId, pathId(ctx), status))
   },
+  // Reads a job posting from a link; nothing is saved until the user confirms.
+  "POST /applications/extract": async (ctx) => {
+    const { url } = validate(jobLinkBody, ctx.body, "request body")
+    return ok(await jobExtractService.extract(url))
+  },
   "POST /applications/{id}/timeline": async (ctx) => {
     const event = validate(timelineEventInput, ctx.body, "request body")
     return created(await applicationsService.addTimelineEvent(ctx.userId, pathId(ctx), event))
@@ -59,11 +67,18 @@ export const companyRoutes = crudRoutes("/companies", filtered(companiesService)
   query: companyQuery,
 })
 
-export const contactRoutes = crudRoutes("/contacts", filtered(contactsService), {
-  input: contactInput,
-  patch: contactPatch,
-  query: contactQuery,
-})
+export const contactRoutes: Routes = {
+  ...crudRoutes("/contacts", filtered(contactsService), {
+    input: contactInput,
+    patch: contactPatch,
+    query: contactQuery,
+  }),
+  // Reads a person from a profile link; nothing is saved until the user confirms.
+  "POST /contacts/extract": async (ctx) => {
+    const { url } = validate(jobLinkBody, ctx.body, "request body")
+    return ok(await contactExtractService.extract(url))
+  },
+}
 
 export const referralRoutes = crudRoutes("/referrals", filtered(referralsService), {
   input: referralInput,

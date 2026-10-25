@@ -46,6 +46,9 @@ export const applicationInput = z.strictObject({
 export type ApplicationInput = z.output<typeof applicationInput>
 export const applicationPatch = patchSchema(applicationInput)
 
+/** A job or profile link to read for the "add from link" chat. */
+export const jobLinkBody = z.strictObject({ url: urlText })
+
 export const applicationStatusBody = z.strictObject({ status: z.enum(APPLICATION_STATUSES) })
 
 export const timelineEventInput = z.strictObject({

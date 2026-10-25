@@ -242,6 +242,8 @@ Resources:
     Properties:
       Description: Applications, companies, contacts, referrals and interviews.
       Runtime: nodejs22.x
+      # Reading a job link waits on the job site (up to ~8 s per request).
+      Timeout: 20
       Architectures: [!Ref Architecture]
       CodeUri: ./
       Handler: career.handler
@@ -298,6 +300,18 @@ Resources:
             ApiId: !Ref HttpApi
             Method: POST
             Path: /applications/{id}/timeline
+        ExtractApplicationFromLink:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /applications/extract
+        ExtractContactFromLink:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /contacts/extract
         ListCompanies:
           Type: HttpApi
           Properties:

@@ -97,6 +97,16 @@ Server-side rules worth knowing:
 
 - Creating an application adds timeline events and sets `appliedDate` unless the status is
   `wishlist`. Changing status appends a timeline event and an activity.
+- `POST /applications/extract` `{ url }` reads a job posting from a link and returns
+  `{ url, kind: "job" | "unknown", site, via: "api" | "page", job: { role, company, location,
+  workMode, salary, jobId, jobUrl, source, description } }` (blank = not found). Nothing is
+  saved — the web app's Job chat shows it for review, then calls `POST /applications`.
+  Greenhouse, Lever, Ashby and Workday links are read through their public job APIs; LinkedIn
+  through its logged-out job page; anything else from the page's HTML (the extension's site
+  rules, then `JobPosting` JSON-LD, then meta tags). Only public http(s) hosts are fetched —
+  private, loopback and link-local addresses are refused on every redirect — with a 3 MB /
+  8 s cap per page. Sites that block the request (403/429, LinkedIn's 999) return a 502 that
+  says so.
 - Creating an interview appends an "interview scheduled" event to its application.
 - Updating a resume bumps its version (`v3.2` → `v3.3`) unless `version` is sent.
 - Setting a task to `done` sets `completedAt`; any other status clears it.

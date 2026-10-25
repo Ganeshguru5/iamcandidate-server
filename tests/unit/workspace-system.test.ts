@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import { handler as system } from "../../src/functions/system"
 import { handler as workspace } from "../../src/functions/workspace"
-import type { Activity, AppNotification, BoardItem, Task } from "../../src/models"
-import { repositories } from "../../src/repositories/dynamodb"
+import type { Activity, AppNotification, Board, Task } from "../../src/models"
+import { repositories, settingsRepository } from "../../src/repositories/dynamodb"
 import { call } from "../support/http"
 
 describe("tasks", () => {
@@ -45,27 +45,23 @@ describe("notes", () => {
 })
 
 describe("board", () => {
-  const sealed = `v1.${"a".repeat(22)}.${"b".repeat(16)}.${"c".repeat(40)}`
-  const item = { title: "Stripe key", kind: "secret", content: sealed, tags: [], pinned: true, color: "teal" }
+  it("starts empty, saves, and stores the text encrypted", async () => {
+    const empty = await call<Board>(workspace, "GET", "/board")
+    expect(empty.body.data).toEqual({ content: "", updatedAt: null })
 
-  it("stores encrypted secrets and filters pinned items", async () => {
-    expect((await call(workspace, "POST", "/board", { body: item })).status).toBe(201)
-    await call(workspace, "POST", "/board", {
-      body: { ...item, kind: "text", content: "hello", pinned: false },
-    })
-    const pinned = await call<BoardItem[]>(workspace, "GET", "/board", { query: { pinned: "true" } })
-    expect(pinned.body.data).toEqual([expect.objectContaining({ kind: "secret", content: sealed })])
+    const saved = await call<Board>(workspace, "PUT", "/board", { body: { content: "sk_live_123" } })
+    expect(saved.body.data?.content).toBe("sk_live_123")
+
+    const again = await call<Board>(workspace, "GET", "/board")
+    expect(again.body.data).toEqual(saved.body.data)
+
+    const stored = await settingsRepository.get("usr_test", "BOARD")
+    expect(stored?.encryptedContent).not.toContain("sk_live_123")
   })
 
-  it("rejects secrets that are not encrypted", async () => {
-    const plain = await call(workspace, "POST", "/board", { body: { ...item, content: "sk_live_123" } })
-    expect(plain.status).toBe(400)
-
-    const text = (await call<BoardItem>(workspace, "POST", "/board", {
-      body: { ...item, kind: "text", content: "sk_live_123" },
-    })).body.data as BoardItem
-    const flipped = await call(workspace, "PUT", `/board/${text.id}`, { body: { kind: "secret" } })
-    expect(flipped.status).toBe(400)
+  it("rejects unknown fields", async () => {
+    const res = await call(workspace, "PUT", "/board", { body: { content: "", pinned: true } })
+    expect(res.status).toBe(400)
   })
 })
 

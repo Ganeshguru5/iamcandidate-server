@@ -284,22 +284,16 @@ export interface Note extends Entity {
   updatedAt: ISODate
 }
 
-export const BOARD_KINDS = ["text", "code", "link", "secret"] as const
-export const BOARD_COLORS = ["default", "teal", "amber", "blue", "rose", "violet"] as const
-
-/**
- * A card on the sync board. For `secret` items `content` is an envelope the
- * browser encrypted with the user's passphrase (`v1.<salt>.<iv>.<data>`), so
- * the plain value never reaches the server.
- */
-export interface BoardItem extends Entity {
-  title: string
-  kind: (typeof BOARD_KINDS)[number]
+/** The sync board: one free-form pad per user, the same text on every system. */
+export interface Board {
   content: string
-  tags: string[]
-  pinned: boolean
-  color: (typeof BOARD_COLORS)[number]
-  createdAt: ISODate
+  /** `null` until the first save. */
+  updatedAt: ISODate | null
+}
+
+/** Stored form: the text is AES-256-GCM encrypted at rest. */
+export interface StoredBoard {
+  encryptedContent: string
   updatedAt: ISODate
 }
 

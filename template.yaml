@@ -679,36 +679,18 @@ Resources:
             ApiId: !Ref HttpApi
             Method: DELETE
             Path: /notes/{id}
-        ListBoardItems:
+        GetBoard:
           Type: HttpApi
           Properties:
             ApiId: !Ref HttpApi
             Method: GET
             Path: /board
-        CreateBoardItem:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref HttpApi
-            Method: POST
-            Path: /board
-        GetBoardItem:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref HttpApi
-            Method: GET
-            Path: /board/{id}
-        UpdateBoardItem:
+        SaveBoard:
           Type: HttpApi
           Properties:
             ApiId: !Ref HttpApi
             Method: PUT
-            Path: /board/{id}
-        DeleteBoardItem:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref HttpApi
-            Method: DELETE
-            Path: /board/{id}
+            Path: /board
 
   WorkspaceFunctionLogs:
     Type: AWS::Logs::LogGroup

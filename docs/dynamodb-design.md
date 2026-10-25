@@ -39,13 +39,13 @@ All other attributes are the entity's own fields, stored as top-level attributes
 | Project                  | `PROJECT#<id>`                       |                                                                        |
 | Task                     | `TASK#<id>`                          | optional `related: { type, id, label }`                                |
 | Note                     | `NOTE#<id>`                          |                                                                        |
-| Board item               | `BOARD#<id>`                         | `secret` items hold client-side ciphertext only                        |
 | Skill                    | `SKILL#<id>`                         |                                                                        |
 | Certification            | `CERTIFICATION#<id>`                 | optional `documentId`                                                  |
 | Link (bookmark)          | `LINK#<id>`                          |                                                                        |
 | Activity                 | `ACTIVITY#<isoDate>#<id>`            | ISO dates sort lexicographically → feed order; `ttl` = date + 365 days |
 | Profile                  | `SETTINGS#PROFILE`                   | singleton                                                              |
 | Notification preferences | `SETTINGS#NOTIFICATIONS`             | singleton                                                              |
+| Sync board               | `SETTINGS#BOARD`                     | singleton; `encryptedContent` is AES-256-GCM encrypted                 |
 | Notification read marker | `NOTIFICATION_READ#<notificationId>` | `ttl` = 60 days                                                        |
 
 Ids keep the frontend's shape: `<prefix>_<16 hex>` (`app_…`, `cmp_…`, `doc_…`).

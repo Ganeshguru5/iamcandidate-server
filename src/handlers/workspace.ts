@@ -1,10 +1,8 @@
 import { ok } from "../lib/response"
-import type { BoardItem } from "../models"
 import type { Routes } from "../lib/router"
+import { validate } from "../lib/validation"
 import {
-  boardItemInput,
-  boardItemPatch,
-  boardQuery,
+  boardInput,
   noteInput,
   notePatch,
   noteQuery,
@@ -51,15 +49,8 @@ export const noteRoutes: Routes = crudRoutes(
   { input: noteInput, patch: notePatch, query: noteQuery },
 )
 
-export const boardRoutes: Routes = crudRoutes(
-  "/board",
-  {
-    ...boardService,
-    list: async (userId: string, query: { kind?: BoardItem["kind"]; pinned?: "true" | "false" }) =>
-      filterItems(await boardService.list(userId), {
-        kind: query.kind,
-        pinned: query.pinned === undefined ? undefined : query.pinned === "true",
-      }),
-  },
-  { input: boardItemInput, patch: boardItemPatch, query: boardQuery },
-)
+export const boardRoutes: Routes = {
+  "GET /board": async (ctx) => ok(await boardService.get(ctx.userId)),
+  "PUT /board": async (ctx) =>
+    ok(await boardService.save(ctx.userId, validate(boardInput, ctx.body, "request body"))),
+}

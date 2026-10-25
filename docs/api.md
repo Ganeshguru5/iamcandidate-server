@@ -85,7 +85,6 @@ The standard five routes exist for every resource below:
 | Projects       | `/projects`       | `status`                                         |                                                                                                                         |
 | Tasks          | `/tasks`          | `status`, `priority`, `relatedType`, `relatedId` | `POST /tasks/{id}/toggle`                                                                                               |
 | Notes          | `/notes`          | `category`, `favorite=true\|false`               |                                                                                                                         |
-| Board          | `/board`          | `kind`, `pinned=true\|false`                     | `secret` items must be encrypted by the client (`v1.<salt>.<iv>.<data>`); plain values are rejected                    |
 | Skills         | `/skills`         |                                                  |                                                                                                                         |
 | Certifications | `/certifications` |                                                  |                                                                                                                         |
 | Links          | `/links`          | `category`                                       |                                                                                                                         |
@@ -277,6 +276,8 @@ again with `cursor` until `done`. The key needs `s3:PutObject` and `s3:GetObject
 
 | Route                                   |                                                                                                                                            |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /board`                           | The user's sync pad: `{ content, updatedAt }` (`updatedAt` is `null` before the first save)                                            |
+| `PUT /board` `{ content }`              | Replaces the pad (up to 50,000 characters); stored AES-256-GCM encrypted                                                                   |
 | `GET /dashboard?tzOffset=`              | Aggregates for the dashboard (counts, 10-week series, status breakdown, funnel, next interview, task/document counts, 7 latest activities) |
 | `GET /activities?limit=1..200&cursor=`  | Newest first. `meta.nextCursor` is `null` on the last page                                                                                 |
 | `GET /notifications?tzOffset=`          | Reminders derived from interviews (next 3 days), overdue/today follow-ups and tasks, honoring notification preferences                     |

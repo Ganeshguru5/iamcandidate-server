@@ -10,8 +10,6 @@ import {
   urlText,
 } from "../lib/validation"
 import {
-  BOARD_COLORS,
-  BOARD_KINDS,
   NOTE_CATEGORIES,
   PROJECT_STATUSES,
   RELATED_TYPES,
@@ -81,21 +79,5 @@ export const noteQuery = z.object({
 
 /* Board ------------------------------------------------------------- */
 
-/** Base64url pieces of an encrypted secret: `v1.<salt>.<iv>.<data>`. */
-export const SEALED_SECRET = /^v1\.[\w-]{16,}\.[\w-]{16}\.[\w-]{22,}$/
-
-export const boardItemInput = z.strictObject({
-  title: requiredText(300),
-  kind: z.enum(BOARD_KINDS),
-  content: longText(100_000),
-  tags: stringList(),
-  pinned: z.boolean(),
-  color: z.enum(BOARD_COLORS),
-})
-export type BoardItemInput = z.output<typeof boardItemInput>
-export const boardItemPatch = patchSchema(boardItemInput)
-
-export const boardQuery = z.object({
-  kind: z.enum(BOARD_KINDS).optional(),
-  pinned: z.enum(["true", "false"]).optional(),
-})
+export const boardInput = z.strictObject({ content: longText(50_000) })
+export type BoardInput = z.output<typeof boardInput>

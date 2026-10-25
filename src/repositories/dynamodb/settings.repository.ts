@@ -1,5 +1,6 @@
 import type {
   LinkedInStatus,
+  StoredBoard,
   NotificationPreferences,
   StoredAwsBackup,
   StoredGitHub,
@@ -19,12 +20,13 @@ interface SettingsDocuments {
   GITHUB: StoredGitHub
   LINKEDIN: LinkedInStatus
   AWS_BACKUP: StoredAwsBackup
+  BOARD: StoredBoard
   /** Which version of the default email templates this account has been given. */
   TEMPLATE_DEFAULTS: { version: number; seededAt: string }
 }
 
 /** Settings documents that hold encrypted credentials; never exported or returned as-is. */
-export const SECRET_SETTINGS = ["SMTP", "GOOGLE_DRIVE", "GOOGLE_CALENDAR", "GITHUB", "AWS_BACKUP"]
+export const SECRET_SETTINGS = ["SMTP", "GOOGLE_DRIVE", "GOOGLE_CALENDAR", "GITHUB", "AWS_BACKUP", "BOARD"]
 
 /** Per-user singleton documents: `SK = SETTINGS#PROFILE`, `SETTINGS#NOTIFICATIONS`. */
 export const settingsRepository = {

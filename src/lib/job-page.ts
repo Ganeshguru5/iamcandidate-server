@@ -236,6 +236,13 @@ export function linkedInJobId(url: URL): string {
   )
 }
 
+/** Naukri job id: the trailing number of a job-listings slug, or ?jobId=. */
+export function naukriJobId(url: URL): string {
+  const id =
+    url.searchParams.get("jobId") || url.pathname.match(/-(\d{6,})\/?$/)?.[1] || ""
+  return /^\d{6,}$/.test(id) ? id : ""
+}
+
 /* ---------------- page extraction ---------------- */
 
 /**
@@ -383,7 +390,7 @@ export function extractJobFromHtml(html: string, linkUrl: string): PageExtractio
     const job = emptyJob()
     job.source = "Naukri"
     job.jobUrl = linkUrl.split("?")[0] ?? linkUrl
-    job.jobId = path.match(/-(\d{6,})\/?$/)?.[1] ?? ""
+    job.jobId = naukriJobId(url)
     job.role = pick(['[class*="jd-header-title"]', ".jd-header-title", "h1"])
     job.company = pick([
       '[class*="jd-header-comp-name"] > a',

@@ -245,6 +245,14 @@ export function createJobExtractor(fetcher: Fetcher = fetchPublic) {
     // guest endpoint, which stands in for the job's own link.
     const link = linkedInId ? `https://www.linkedin.com/jobs/view/${linkedInId}/` : page.url
     const result = extractJobFromHtml(page.body, link)
+    // Naukri's page is an empty shell without its API; say so rather than show a blank card.
+    if (result.site === "Naukri" && !result.job.role) {
+      throw new AppError(
+        502,
+        "INTEGRATION_ERROR",
+        "naukri.com didn't let knot read that job. Copy the job's text from the page and paste it here, or fill in the details yourself.",
+      )
+    }
     return { url: url.toString(), via: "page", ...result }
   }
 

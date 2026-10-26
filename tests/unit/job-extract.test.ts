@@ -55,6 +55,14 @@ describe("job link extraction", () => {
     expect(result.job.description).toBe("Build things & ship.\n• React")
   })
 
+  it("says so when a Naukri job can't be read", async () => {
+    const link = "https://www.naukri.com/job-listings-react-developer-acme-221024500123"
+    const { fetcher } = fakeFetch({
+      [link]: { body: "<html><body><div id='root'></div></body></html>" },
+    })
+    await expect(createJobExtractor(fetcher).extract(link)).rejects.toThrow(/naukri\.com didn't let knot/)
+  })
+
   it("reads Lever jobs with workplace type and salary", async () => {
     const { fetcher } = fakeFetch({
       "https://api.lever.co/v0/postings/brightwave/0a1b-2c3d": {

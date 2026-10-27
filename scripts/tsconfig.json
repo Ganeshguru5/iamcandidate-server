@@ -8,5 +8,12 @@
       "@/*": ["../../knot/src/*", "../../knot-ui/src/*"]
     }
   },
-  "include": ["seed.ts", "seed-data.ts", "dev-server.ts", "local-table.ts", "dynalite.d.ts"]
+  "include": [
+    "seed.ts",
+    "seed-data.ts",
+    "seed-showcase.ts",
+    "dev-server.ts",
+    "local-table.ts",
+    "dynalite.d.ts"
+  ]
 }

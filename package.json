@@ -18,6 +18,7 @@
     "local:down": "docker compose down",
     "local:setup": "tsx scripts/setup-local.ts",
     "seed": "tsx --tsconfig scripts/tsconfig.json scripts/seed.ts",
+    "seed:showcase": "tsx --tsconfig scripts/tsconfig.json scripts/seed-showcase.ts",
     "create-user": "tsx scripts/create-user.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

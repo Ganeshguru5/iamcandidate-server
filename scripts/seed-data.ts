@@ -7,7 +7,7 @@ import { createSeedDatabase, DEMO_CREDENTIALS } from "@/lib/mock"
 
 import { nowIso } from "../src/lib/ids"
 import { hashPassword } from "../src/lib/passwords"
-import type { Activity } from "../src/models"
+import type { Activity, UserRole } from "../src/models"
 import {
   activityRepository,
   repositories,
@@ -24,17 +24,18 @@ export async function resetUserData(userId: string): Promise<number> {
 }
 
 /**
- * Creates or refreshes the demo login (the frontend's DEMO_CREDENTIALS) as an
- * admin that owns `userId`'s data.
+ * Creates or refreshes the demo login (the frontend's DEMO_CREDENTIALS) that
+ * owns `userId`'s data. Admin by default; a deployed site uses "user", since
+ * the password is shown on the login page.
  */
-export async function seedAdminAccount(userId: string): Promise<string> {
+export async function seedAdminAccount(userId: string, role: UserRole = "admin"): Promise<string> {
   const existing = await usersRepository.get(userId)
   const now = nowIso()
   await usersRepository.upsert({
     id: userId,
     email: DEMO_CREDENTIALS.email,
     name: createSeedDatabase().profile.name,
-    role: "admin",
+    role,
     disabled: false,
     passwordHash: await hashPassword(DEMO_CREDENTIALS.password),
     createdAt: existing?.createdAt ?? now,

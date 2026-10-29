@@ -241,6 +241,63 @@ describe("user management", () => {
   })
 })
 
+describe("access requests", () => {
+  const request = { email: "Carol@Example.com", name: "Carol", password: "carol-pass-1" }
+
+  it("keeps a requester out until an admin grants access", async () => {
+    expect((await call(users, "POST", "/access-requests", { body: request })).status).toBe(204)
+
+    const pending = await login("carol@example.com", "carol-pass-1")
+    expect(pending.status).toBe(403)
+    expect(pending.body.error?.message).toMatch(/waiting for approval/)
+    expect((await login("carol@example.com", "wrong-pass-1")).status).toBe(401)
+
+    const admin = await tokenFor("admin@example.com", "admin-pass-1")
+    const list = await call<{ id: string; email: string }[]>(users, "GET", "/access-requests", {
+      token: admin,
+    })
+    expect(list.body.data).toEqual([expect.objectContaining({ email: "carol@example.com" })])
+    expect(JSON.stringify(list.body)).not.toContain("passwordHash")
+
+    const id = list.body.data?.[0]?.id
+    const granted = await call<UserAccount>(users, "POST", `/access-requests/${id}/grant`, {
+      token: admin,
+    })
+    expect(granted.status).toBe(201)
+    expect(granted.body.data).toMatchObject({ email: "carol@example.com", role: "user" })
+
+    expect((await login("carol@example.com", "carol-pass-1")).status).toBe(200)
+    const after = await call<unknown[]>(users, "GET", "/access-requests", { token: admin })
+    expect(after.body.data).toEqual([])
+  })
+
+  it("lets an admin decline a request", async () => {
+    await call(users, "POST", "/access-requests", { body: request })
+    const admin = await tokenFor("admin@example.com", "admin-pass-1")
+    const list = await call<{ id: string }[]>(users, "GET", "/access-requests", { token: admin })
+    const id = list.body.data?.[0]?.id
+    expect((await call(users, "DELETE", `/access-requests/${id}`, { token: admin })).status).toBe(204)
+    expect((await login("carol@example.com", "carol-pass-1")).status).toBe(401)
+  })
+
+  it("is admin-only to review, and silent about existing accounts", async () => {
+    const bob = await tokenFor("bob@example.com", "bob-pass-12")
+    expect((await call(users, "GET", "/access-requests", { token: bob })).status).toBe(403)
+
+    const existing = { email: "bob@example.com", name: "Bob", password: "another-pass" }
+    expect((await call(users, "POST", "/access-requests", { body: existing })).status).toBe(204)
+    const admin = await tokenFor("admin@example.com", "admin-pass-1")
+    const list = await call<unknown[]>(users, "GET", "/access-requests", { token: admin })
+    expect(list.body.data).toEqual([])
+    expect((await login("bob@example.com", "bob-pass-12")).status).toBe(200)
+  })
+
+  it("validates the form", async () => {
+    const short = { ...request, password: "short" }
+    expect((await call(users, "POST", "/access-requests", { body: short })).status).toBe(400)
+  })
+})
+
 describe("own password", () => {
   it("changes the password after checking the current one", async () => {
     const bob = await tokenFor("bob@example.com", "bob-pass-12")

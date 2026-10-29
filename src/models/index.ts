@@ -461,6 +461,19 @@ export interface StoredAccount extends UserAccount {
   passwordHash: string
 }
 
+/** Someone asking for an account. It becomes a login only when an admin grants it. */
+export interface AccessRequest {
+  id: ID
+  email: string
+  name: string
+  message?: string
+  createdAt: ISODate
+}
+
+export interface StoredAccessRequest extends AccessRequest {
+  passwordHash: string
+}
+
 /* ------------------------------------------------------------------ */
 /* Communication                                                       */
 /* ------------------------------------------------------------------ */

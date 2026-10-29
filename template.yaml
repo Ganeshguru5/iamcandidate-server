@@ -1096,6 +1096,30 @@ Resources:
             ApiId: !Ref HttpApi
             Method: DELETE
             Path: /users/{id}
+        RequestAccess:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /access-requests
+        ListAccessRequests:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /access-requests
+        GrantAccess:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /access-requests/{id}/grant
+        DeclineAccess:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: DELETE
+            Path: /access-requests/{id}
 
   UsersFunctionLogs:
     Type: AWS::Logs::LogGroup

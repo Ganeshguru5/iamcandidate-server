@@ -1,14 +1,25 @@
 import { getConfig } from "../lib/config"
-import { AppError, BadRequestError, ConflictError } from "../lib/errors"
+import { AppError, BadRequestError, ConflictError, NotFoundError } from "../lib/errors"
 import { createId, nowIso } from "../lib/ids"
 import { logger, serializeError } from "../lib/logger"
 import { getDummyHash, hashPassword, verifyPassword } from "../lib/passwords"
 import { createToken, TOKEN_TTL_SECONDS } from "../lib/tokens"
-import type { StoredAccount, UserAccount } from "../models"
-import { repositories, settingsRepository, usersRepository } from "../repositories/dynamodb"
+import type {
+  AccessRequest,
+  StoredAccessRequest,
+  StoredAccount,
+  UserAccount,
+  UserRole,
+} from "../models"
+import {
+  accessRequestsRepository,
+  repositories,
+  settingsRepository,
+  usersRepository,
+} from "../repositories/dynamodb"
 import { batchDelete, queryPartitionKeys, userPk } from "../repositories/dynamodb/table"
 import { filesRepository } from "../repositories/s3/files.repository"
-import type { CreateUserInput, UpdateUserInput } from "../schemas/users"
+import type { AccessRequestInput, CreateUserInput, UpdateUserInput } from "../schemas/users"
 import { templatesService } from "./templates.service"
 
 /** API shape: never includes the password hash. */
@@ -44,6 +55,45 @@ async function deleteUserData(userId: string) {
   await batchDelete(await queryPartitionKeys(userPk(userId)))
 }
 
+/** Caps the public sign-up form so it can't fill the table. */
+const MAX_PENDING_REQUESTS = 200
+
+/** Creates the account and an empty workspace with a starter profile. */
+async function createAccount(input: {
+  email: string
+  name: string
+  role: UserRole
+  passwordHash: string
+}): Promise<UserAccount> {
+  const now = nowIso()
+  const account: StoredAccount = {
+    id: createId("usr"),
+    email: input.email.trim().toLowerCase(),
+    name: input.name,
+    role: input.role,
+    disabled: false,
+    passwordHash: input.passwordHash,
+    createdAt: now,
+    updatedAt: now,
+  }
+  await usersRepository.create(account)
+  await settingsRepository.put(account.id, "PROFILE", {
+    name: account.name,
+    email: account.email,
+    role: "",
+    bio: "",
+    location: "",
+  })
+  await templatesService.ensureDefaults(account.id)
+  return toPublicUser(account)
+}
+
+async function findAccessRequest(id: string): Promise<StoredAccessRequest> {
+  const request = (await accessRequestsRepository.list()).find((item) => item.id === id)
+  if (!request) throw new NotFoundError("Access request", id)
+  return request
+}
+
 function issueSession(account: StoredAccount) {
   const secret = getConfig().authSecret
   if (!secret) throw new Error("AUTH_SECRET is not configured")
@@ -57,10 +107,21 @@ function issueSession(account: StoredAccount) {
 export const usersService = {
   async login(email: string, password: string) {
     const account = await usersRepository.findByEmail(email)
-    // Verify against a dummy hash when the email is unknown so response time
-    // doesn't reveal which emails have accounts.
-    const valid = await verifyPassword(password, account?.passwordHash ?? (await getDummyHash()))
-    if (!account || !valid) throw invalidCredentials()
+    if (!account) {
+      // Verify against a dummy hash when the email is unknown so response time
+      // doesn't reveal which emails have accounts or requests.
+      const request = await accessRequestsRepository.get(email)
+      const valid = await verifyPassword(password, request?.passwordHash ?? (await getDummyHash()))
+      if (request && valid) {
+        throw new AppError(
+          403,
+          "FORBIDDEN",
+          "Your access request is waiting for approval. You can sign in once the admin grants access.",
+        )
+      }
+      throw invalidCredentials()
+    }
+    if (!(await verifyPassword(password, account.passwordHash))) throw invalidCredentials()
     if (account.disabled) {
       throw new AppError(401, "UNAUTHORIZED", "This account has been disabled. Contact your admin.")
     }
@@ -101,29 +162,56 @@ export const usersService = {
     return toPublicUser(await usersRepository.getOrThrow(id))
   },
 
-  /** Creates the account and an empty workspace with a starter profile. */
   async create(input: CreateUserInput): Promise<UserAccount> {
-    const now = nowIso()
-    const account: StoredAccount = {
-      id: createId("usr"),
-      email: input.email.trim().toLowerCase(),
-      name: input.name,
-      role: input.role,
-      disabled: false,
-      passwordHash: await hashPassword(input.password),
-      createdAt: now,
-      updatedAt: now,
+    const { password, ...rest } = input
+    return createAccount({ ...rest, passwordHash: await hashPassword(password) })
+  },
+
+  /** Pending sign-ups, newest first. */
+  async listAccessRequests(): Promise<AccessRequest[]> {
+    const requests = await accessRequestsRepository.list()
+    return requests
+      .map(({ passwordHash: _passwordHash, ...request }) => request)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  },
+
+  /**
+   * Saves a sign-up for the admin to review. Says nothing about whether the
+   * email already has an account (that request is just dropped), and a second
+   * request for the same email replaces the first.
+   */
+  async requestAccess(input: AccessRequestInput): Promise<void> {
+    if (await usersRepository.findByEmail(input.email)) return
+    const existing = await accessRequestsRepository.get(input.email)
+    if (!existing && (await accessRequestsRepository.list()).length >= MAX_PENDING_REQUESTS) {
+      throw new AppError(429, "RATE_LIMITED", "Too many pending requests right now. Try again later.")
     }
-    await usersRepository.create(account)
-    await settingsRepository.put(account.id, "PROFILE", {
-      name: account.name,
-      email: account.email,
-      role: "",
-      bio: "",
-      location: "",
+    await accessRequestsRepository.put({
+      id: existing?.id ?? createId("req"),
+      email: input.email,
+      name: input.name,
+      ...(input.message ? { message: input.message } : {}),
+      passwordHash: await hashPassword(input.password),
+      createdAt: nowIso(),
     })
-    await templatesService.ensureDefaults(account.id)
-    return toPublicUser(account)
+  },
+
+  /** Turns the request into a regular (non-admin) account with the password they chose. */
+  async grantAccess(requestId: string): Promise<UserAccount> {
+    const request = await findAccessRequest(requestId)
+    const user = await createAccount({
+      email: request.email,
+      name: request.name,
+      role: "user",
+      passwordHash: request.passwordHash,
+    })
+    await accessRequestsRepository.delete(request.email)
+    return user
+  },
+
+  async declineAccess(requestId: string): Promise<void> {
+    const request = await findAccessRequest(requestId)
+    await accessRequestsRepository.delete(request.email)
   },
 
   async update(actorId: string, id: string, patch: UpdateUserInput): Promise<UserAccount> {

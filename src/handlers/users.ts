@@ -2,12 +2,18 @@ import { requireAdmin } from "../lib/auth"
 import { created, noContent, ok } from "../lib/response"
 import type { Routes } from "../lib/router"
 import { validate } from "../lib/validation"
-import { changePasswordInput, createUserInput, loginInput, updateUserInput } from "../schemas/users"
+import {
+  accessRequestInput,
+  changePasswordInput,
+  createUserInput,
+  loginInput,
+  updateUserInput,
+} from "../schemas/users"
 import { usersService } from "../services/users.service"
 import { pathId } from "./crud"
 
-/** The only route that doesn't need a session. */
-export const PUBLIC_ROUTES = ["POST /auth/login"]
+/** Routes that don't need a session: signing in and asking for an account. */
+export const PUBLIC_ROUTES = ["POST /auth/login", "POST /access-requests"]
 
 export const authRoutes: Routes = {
   "POST /auth/login": async (ctx) => {
@@ -46,6 +52,25 @@ export const userRoutes: Routes = {
   "DELETE /users/{id}": async (ctx) => {
     requireAdmin(ctx)
     await usersService.remove(ctx.userId, pathId(ctx))
+    return noContent()
+  },
+
+  /** Public: the sign-up form. Always 204, whether or not the email has an account. */
+  "POST /access-requests": async (ctx) => {
+    await usersService.requestAccess(validate(accessRequestInput, ctx.body, "request body"))
+    return noContent()
+  },
+  "GET /access-requests": async (ctx) => {
+    requireAdmin(ctx, "review access requests")
+    return ok(await usersService.listAccessRequests())
+  },
+  "POST /access-requests/{id}/grant": async (ctx) => {
+    requireAdmin(ctx, "grant access")
+    return created(await usersService.grantAccess(pathId(ctx)))
+  },
+  "DELETE /access-requests/{id}": async (ctx) => {
+    requireAdmin(ctx, "decline access requests")
+    await usersService.declineAccess(pathId(ctx))
     return noContent()
   },
 }

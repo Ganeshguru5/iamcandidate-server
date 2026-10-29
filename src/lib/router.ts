@@ -126,7 +126,7 @@ export function createHandler(routes: Routes, options: { publicRoutes?: string[]
           throw new AppError(
             403,
             "READ_ONLY",
-            "The demo account is read-only. Contact the admin at ganeshguru8681@gmail.com for early access.",
+            "The demo account is read-only. Request access to get a workspace of your own.",
           )
         }
         result = await found.route.handler({

@@ -30,6 +30,15 @@ export const createUserInput = z.strictObject({
 })
 export type CreateUserInput = z.output<typeof createUserInput>
 
+/** Public sign-up form: the password is the one they'll sign in with once granted. */
+export const accessRequestInput = z.strictObject({
+  email,
+  name: requiredText(100),
+  password: newPassword,
+  message: z.string().trim().max(500).optional(),
+})
+export type AccessRequestInput = z.output<typeof accessRequestInput>
+
 /** Email is the login id and is not editable; recreate the user to change it. */
 export const updateUserInput = z
   .strictObject({

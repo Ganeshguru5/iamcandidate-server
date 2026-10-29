@@ -17,6 +17,7 @@ import type {
 } from "../../models"
 import { EntityRepository } from "./entity.repository"
 
+export { accessRequestsRepository } from "./access-requests.repository"
 export { activityRepository } from "./activity.repository"
 export {
   notificationReadRepository,

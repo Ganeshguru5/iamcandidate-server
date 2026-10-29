@@ -134,6 +134,21 @@ describe("session checks", () => {
     await call(users, "PUT", "/users/usr_bob", { body: { disabled: true }, token: admin })
     expect((await call(workspace, "GET", "/tasks", { token: bob })).status).toBe(401)
   })
+
+  it("lets a read-only account read but not change anything", async () => {
+    const bob = (await usersRepository.get("usr_bob"))!
+    await usersRepository.replace({ ...bob, readOnly: true })
+    const token = await tokenFor("bob@example.com", "bob-pass-12")
+    const body = { title: "Demo task", description: "", priority: "low", status: "todo" }
+
+    expect((await call(workspace, "GET", "/tasks", { token })).status).toBe(200)
+    const created = await call(workspace, "POST", "/tasks", { body, token })
+    expect(created.status).toBe(403)
+    expect(created.body.error?.code).toBe("READ_ONLY")
+    expect((await call(users, "PUT", "/auth/password", { body: {}, token })).status).toBe(403)
+    expect((await call(users, "POST", "/auth/refresh", { token })).status).toBe(200)
+    expect(await repositories.tasks.list("usr_bob")).toHaveLength(0)
+  })
 })
 
 describe("user management", () => {

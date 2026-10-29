@@ -5,7 +5,7 @@
  *   npm run seed                    # upsert demo data + admin login
  *   npm run seed -- --reset         # delete the user's data first
  *   npm run seed -- --account-only  # only (re)create the login, keep data as is
- *   npm run seed -- --env .env.prod --role user   # a deployed table, non-admin login
+ *   npm run seed -- --env .env.prod --role user --read-only   # a deployed table: view-only demo
  *
  * Uses `.env` (Docker setup) unless `--env` names another file; only that file
  * is read. `npm run dev` seeds its own database on first start. For a deployed
@@ -23,6 +23,7 @@ const { values: args } = parseArgs({
   options: {
     env: { type: "string" },
     role: { type: "string", default: "admin" },
+    "read-only": { type: "boolean", default: false },
     reset: { type: "boolean", default: false },
     "account-only": { type: "boolean", default: false },
   },
@@ -45,8 +46,9 @@ async function main() {
     await seedDemoData(userId)
     console.log(`✓ seeded ${config.tableName} for ${userId}`)
   }
-  const email = await seedAdminAccount(userId, role)
-  console.log(`✓ ${role} login ${email} (password from the frontend's demo credentials)`)
+  const readOnly = args["read-only"]
+  const email = await seedAdminAccount(userId, role, readOnly)
+  console.log(`✓ ${readOnly ? "read-only " : ""}${role} login ${email} (password from the frontend's demo credentials)`)
 }
 
 main().catch((error: unknown) => {

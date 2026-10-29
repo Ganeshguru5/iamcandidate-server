@@ -18,6 +18,13 @@ export interface RequestContext {
   event: APIGatewayProxyEventV2
 }
 
+/** POSTs a read-only account may still make: they change no data. */
+const READ_ONLY_ALLOWED = new Set([
+  "POST /auth/refresh",
+  "POST /applications/extract",
+  "POST /contacts/extract",
+])
+
 export type RouteHandler = (ctx: RequestContext) => Promise<ApiResult>
 
 /** Route table keyed like API Gateway route keys: `"GET /applications/{id}"`. */
@@ -112,9 +119,16 @@ export function createHandler(routes: Routes, options: { publicRoutes?: string[]
         if (!found) {
           throw new AppError(404, "ROUTE_NOT_FOUND", `No route for ${method} ${path}`)
         }
-        const principal = publicRoutes.has(found.route.key)
-          ? { userId: "", role: "user" as const }
+        const { readOnly, ...principal } = publicRoutes.has(found.route.key)
+          ? { userId: "", role: "user" as const, readOnly: false }
           : await authenticate(event)
+        if (readOnly && method !== "GET" && !READ_ONLY_ALLOWED.has(found.route.key)) {
+          throw new AppError(
+            403,
+            "READ_ONLY",
+            "The demo account is read-only. Contact the admin at ganeshguru8681@gmail.com for early access.",
+          )
+        }
         result = await found.route.handler({
           ...principal,
           params: found.params,

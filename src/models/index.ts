@@ -450,6 +450,8 @@ export interface UserAccount {
   name: string
   role: UserRole
   disabled: boolean
+  /** Can read everything but change nothing (the public demo account). */
+  readOnly?: boolean
   lastLoginAt?: ISODate
   createdAt: ISODate
   updatedAt: ISODate

@@ -26,9 +26,13 @@ export async function resetUserData(userId: string): Promise<number> {
 /**
  * Creates or refreshes the demo login (the frontend's DEMO_CREDENTIALS) that
  * owns `userId`'s data. Admin by default; a deployed site uses "user", since
- * the password is shown on the login page.
+ * the password is shown on the login page; `readOnly` also blocks every change.
  */
-export async function seedAdminAccount(userId: string, role: UserRole = "admin"): Promise<string> {
+export async function seedAdminAccount(
+  userId: string,
+  role: UserRole = "admin",
+  readOnly = false,
+): Promise<string> {
   const existing = await usersRepository.get(userId)
   const now = nowIso()
   await usersRepository.upsert({
@@ -37,6 +41,7 @@ export async function seedAdminAccount(userId: string, role: UserRole = "admin")
     name: createSeedDatabase().profile.name,
     role,
     disabled: false,
+    ...(readOnly ? { readOnly } : {}),
     passwordHash: await hashPassword(DEMO_CREDENTIALS.password),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,

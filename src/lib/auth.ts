@@ -10,6 +10,8 @@ import { verifyToken } from "./tokens"
 export interface Principal {
   userId: string
   role: UserRole
+  /** Only GET requests (plus a few that change nothing) are allowed. */
+  readOnly: boolean
 }
 
 const unauthorized = (message: string) => new AppError(401, "UNAUTHORIZED", message)
@@ -24,7 +26,7 @@ const unauthorized = (message: string) => new AppError(401, "UNAUTHORIZED", mess
  */
 export async function authenticate(event: APIGatewayProxyEventV2): Promise<Principal> {
   const { authSecret, defaultUserId } = getConfig()
-  if (!authSecret) return { userId: defaultUserId, role: "admin" }
+  if (!authSecret) return { userId: defaultUserId, role: "admin", readOnly: false }
 
   const header = event.headers?.authorization ?? event.headers?.Authorization
   const token = header?.startsWith("Bearer ") ? header.slice(7).trim() : undefined
@@ -35,7 +37,7 @@ export async function authenticate(event: APIGatewayProxyEventV2): Promise<Princ
 
   const account = await usersRepository.get(claims.sub)
   if (!account || account.disabled) throw unauthorized("This account is no longer active")
-  return { userId: account.id, role: account.role }
+  return { userId: account.id, role: account.role, readOnly: account.readOnly === true }
 }
 
 export function requireAdmin(principal: Pick<Principal, "role">, action = "manage users") {

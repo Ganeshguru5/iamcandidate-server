@@ -26,10 +26,10 @@ const DAY = 24 * 60 * 60 * 1000
 /** Keeps a sync inside API Gateway's 30-second limit. */
 const MAX_EVENTS = 150
 const CONCURRENCY = 5
-const FOOTER = "Added by iamcandidate. Changes made here are overwritten on the next sync."
+const FOOTER = "Added by IamCandidate. Changes made here are overwritten on the next sync."
 
 /**
- * Stable event id per iamcandidate item. Google allows base32hex characters
+ * Stable event id per IamCandidate item. Google allows base32hex characters
  * (0-9, a-v); a hex digest fits, so syncing again updates instead of duplicating.
  */
 export function calendarEventId(userId: string, kind: string, id: string): string {
@@ -218,12 +218,12 @@ export const googleCalendarService = {
       throw new AppError(
         502,
         "INTEGRATION_ERROR",
-        "Google didn't grant offline access. Remove iamcandidate from your Google account's third-party access and connect again.",
+        "Google didn't grant offline access. Remove IamCandidate from your Google account's third-party access and connect again.",
       )
     }
     if (!tokens.scope.includes("calendar")) {
       throw new BadRequestError(
-        "Calendar access wasn't granted. Connect again and allow iamcandidate to manage calendar events.",
+        "Calendar access wasn't granted. Connect again and allow IamCandidate to manage calendar events.",
       )
     }
     const stored: StoredGoogleCalendar = {
@@ -247,7 +247,7 @@ export const googleCalendarService = {
 
   /**
    * Revokes the grant and forgets it. With `removeEvents`, first deletes the
-   * events iamcandidate created (best effort).
+   * events IamCandidate created (best effort).
    */
   async disconnect(userId: string, removeEvents: boolean): Promise<GoogleCalendarStatus> {
     const stored = await settingsRepository.get(userId, "GOOGLE_CALENDAR")

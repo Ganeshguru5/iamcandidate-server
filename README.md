@@ -1,6 +1,6 @@
-# iamcandidate-server — iamcandidate backend
+# iamcandidate-server — IamCandidate backend
 
-Serverless backend for the [iamcandidate frontend](../iamcandidate-ui/README.md): AWS SAM, API Gateway
+Serverless backend for the [IamCandidate frontend](../iamcandidate-ui/README.md): AWS SAM, API Gateway
 HTTP API, Lambda (Node.js 22 + TypeScript), DynamoDB and S3. It implements exactly the data
 contract the frontend's service layer (`iamcandidate-ui/src/lib/services/contracts.ts`) already uses.
 

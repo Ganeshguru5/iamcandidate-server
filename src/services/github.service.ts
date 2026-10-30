@@ -184,7 +184,7 @@ export const githubService = {
     })
   },
 
-  /** Creates a iamcandidate project from a repository (or returns the one already linked). */
+  /** Creates a IamCandidate project from a repository (or returns the one already linked). */
   async importRepo(userId: string, fullName: string): Promise<Project> {
     const path = repoPath(fullName)
     const projects = await repositories.projects.list(userId)

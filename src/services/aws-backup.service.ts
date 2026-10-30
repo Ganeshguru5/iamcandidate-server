@@ -18,7 +18,7 @@ import { queryAll, stripKeys, userPk } from "../repositories/dynamodb/table"
 import { activitiesService } from "./activities.service"
 
 /**
- * Backs up a user's iamcandidate data to their own S3 bucket with an access key they
+ * Backs up a user's IamCandidate data to their own S3 bucket with an access key they
  * provide: a JSON export of everything, plus a copy of every document file.
  *
  * API Gateway allows 30 seconds per request, so a backup runs in steps: each
@@ -79,7 +79,7 @@ function explain(error: unknown, bucket: string): never {
     case "AccessDenied":
     case "Forbidden":
       throw new BadRequestError(
-        `The access key isn't allowed to write to ${bucket}. Give it s3:PutObject and s3:GetObject on the bucket (see the policy shown in iamcandidate).`,
+        `The access key isn't allowed to write to ${bucket}. Give it s3:PutObject and s3:GetObject on the bucket (see the policy shown in IamCandidate).`,
       )
     case "NoSuchBucket":
       throw new BadRequestError(`The bucket ${bucket} doesn't exist.`)
@@ -180,7 +180,7 @@ export const awsBackupService = {
         new PutObjectCommand({
           Bucket: input.bucket,
           Key: `${prefix}${ROOT}connection-check.txt`,
-          Body: `iamcandidate can write backups here. Checked ${nowIso()}.\n`,
+          Body: `IamCandidate can write backups here. Checked ${nowIso()}.\n`,
           ContentType: "text/plain",
         }),
       )

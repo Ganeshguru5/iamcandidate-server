@@ -152,7 +152,7 @@ function statusError(status: number, host: string): AppError {
     return new AppError(
       502,
       "INTEGRATION_ERROR",
-      `${host} didn't share that profile with iamcandidate. Fill in the details yourself, or use the iamcandidate browser extension on the profile.`,
+      `${host} didn't share that profile with IamCandidate. Fill in the details yourself, or use the IamCandidate browser extension on the profile.`,
     )
   }
   return new AppError(502, "INTEGRATION_ERROR", `${host} answered with an error (${status})`)

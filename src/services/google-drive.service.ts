@@ -95,7 +95,7 @@ export const googleDriveService = {
       throw new AppError(
         502,
         "INTEGRATION_ERROR",
-        "Google didn't grant offline access. Remove iamcandidate from your Google account's third-party access and connect again.",
+        "Google didn't grant offline access. Remove IamCandidate from your Google account's third-party access and connect again.",
       )
     }
     const stored: StoredGoogleDrive = {

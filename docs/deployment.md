@@ -49,7 +49,7 @@ Answer the prompts:
 The outputs include `ApiUrl`. Point the frontend at it:
 
 ```bash
-# iamcandidate/.env.local (or your hosting provider's env settings)
+# iamcandidate-ui/.env.local (or your hosting provider's env settings)
 NEXT_PUBLIC_API_MODE=api
 NEXT_PUBLIC_API_URL=https://<api-id>.execute-api.ap-south-1.amazonaws.com
 ```

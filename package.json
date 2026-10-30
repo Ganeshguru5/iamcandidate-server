@@ -2,7 +2,7 @@
   "name": "iamcandidate-server",
   "version": "0.1.0",
   "private": true,
-  "description": "iamcandidate backend — AWS SAM, Lambda, API Gateway HTTP API, DynamoDB and S3.",
+  "description": "IamCandidate backend — AWS SAM, Lambda, API Gateway HTTP API, DynamoDB and S3.",
   "engines": {
     "node": ">=22"
   },

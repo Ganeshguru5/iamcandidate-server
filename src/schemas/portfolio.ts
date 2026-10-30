@@ -102,7 +102,7 @@ export const imageUploadInput = z.strictObject({
 })
 export type ImageUploadInput = z.output<typeof imageUploadInput>
 
-/** Picks the iamcandidate resume whose saved PDF the site's download links serve. */
+/** Picks the IamCandidate resume whose saved PDF the site's download links serve. */
 export const resumeSyncInput = z.strictObject({ resumeId: requiredText(128) })
 export type ResumeSyncInput = z.output<typeof resumeSyncInput>
 
@@ -123,7 +123,7 @@ export const portfolioInput = z
   })
 export type PortfolioInput = z.output<typeof portfolioInput>
 
-/** Which iamcandidate resume `profile.resumeUrl` was synced from; the site ignores it. */
+/** Which IamCandidate resume `profile.resumeUrl` was synced from; the site ignores it. */
 export interface PortfolioResumeLink {
   resumeId: string
   title: string

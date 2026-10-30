@@ -10,7 +10,7 @@ export const PUBLIC_PORTFOLIO_ROUTES = ["GET /portfolio"]
 export const portfolioRoutes: Routes = {
   "GET /portfolio": async () => ok(await portfolioService.get()),
 
-  // Owner only: the signed-in iamcandidate account must be the portfolio owner's.
+  // Owner only: the signed-in IamCandidate account must be the portfolio owner's.
   "PUT /admin/portfolio": async (ctx) => {
     await portfolioService.requireOwner(ctx.userId)
     return ok(await portfolioService.save(validate(portfolioInput, ctx.body, "request body")))

@@ -19,7 +19,7 @@ import { resumesService } from "./resumes.service"
 /** One site-wide item, outside any user's partition. */
 const KEY = { PK: "GLOBAL", SK: "PORTFOLIO" }
 
-/** The only iamcandidate account allowed to edit the portfolio. */
+/** The only IamCandidate account allowed to edit the portfolio. */
 export const PORTFOLIO_OWNER_EMAIL = "ganeshguru8681@gmail.com"
 
 export const portfolioService = {
@@ -45,7 +45,7 @@ export const portfolioService = {
   },
 
   /**
-   * Publishes a iamcandidate resume's saved PDF: copies it into the public bucket
+   * Publishes a IamCandidate resume's saved PDF: copies it into the public bucket
    * and points the site's "Download résumé" links at the copy.
    */
   async syncResume(userId: string, input: ResumeSyncInput): Promise<PortfolioContent> {

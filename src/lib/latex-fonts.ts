@@ -50,7 +50,7 @@ function loadedPackages(source: string): string[] {
 }
 export const PDFTEX_FONTS_FILE = "iamcandidate-pdftex-fonts.tex"
 
-export const PDFTEX_FONTS_SOURCE = String.raw`% iamcandidate: OpenType stand-ins for pdfLaTeX-only font packages (see latex-fonts.ts).
+export const PDFTEX_FONTS_SOURCE = String.raw`% IamCandidate: OpenType stand-ins for pdfLaTeX-only font packages (see latex-fonts.ts).
 % Each hook records the replacement for a package the document loads; they are
 % applied at \begin{document} only if the document is still in TU encoding.
 \makeatletter

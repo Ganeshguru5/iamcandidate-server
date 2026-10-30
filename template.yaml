@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  iamcandidate backend (iamcandidate-server): API Gateway HTTP API + Lambda (Node.js/TypeScript)
+  IamCandidate backend (iamcandidate-server): API Gateway HTTP API + Lambda (Node.js/TypeScript)
   + DynamoDB (single table) + private S3 bucket for documents. No AI services.
 
 Parameters:
@@ -112,7 +112,7 @@ Resources:
   HttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
-      Description: iamcandidate REST API
+      Description: IamCandidate REST API
       CorsConfiguration:
         AllowOrigins: !Ref AllowedOrigins
         AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]

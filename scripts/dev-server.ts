@@ -85,7 +85,7 @@ Object.assign(process.env, {
   PORTFOLIO_ASSETS_URL: `http://localhost:${S3_PORT}/personal-os-portfolio-local`,
   S3_ACCESS_KEY_ID: "local",
   S3_SECRET_ACCESS_KEY: "local",
-  // 3002: the ganesh-portfolio site, run alongside the knot UI on 3000.
+  // 3002: the ganesh-portfolio site, run alongside the iamcandidate UI on 3000.
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS ?? "http://localhost:3000,http://localhost:3002",
   DEFAULT_USER_ID: "usr_demo",
   AUTH_SECRET: process.env.AUTH_SECRET ?? localSecret("AUTH_SECRET"),
@@ -298,7 +298,7 @@ async function main() {
   await listen(server, API_PORT, "API")
 
   console.log(`
-  knot API (dev)          http://localhost:${API_PORT}
+  iamcandidate API (dev)          http://localhost:${API_PORT}
   Sign in                 demo@example.com / demo123  (admin)
   Data                    ${DATA_DIR}  (npm run dev:reset to start over)
   Frontend                NEXT_PUBLIC_API_MODE=api, NEXT_PUBLIC_API_URL=http://localhost:${API_PORT}

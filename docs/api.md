@@ -89,7 +89,7 @@ The standard five routes exist for every resource below:
 | Certifications | `/certifications` |                                                  |                                                                                                                         |
 | Links          | `/links`          | `category`                                       |                                                                                                                         |
 
-Field-level shapes are the frontend types in `knot/src/lib/types` (mirrored in
+Field-level shapes are the frontend types in `iamcandidate-ui/src/lib/types` (mirrored in
 `src/models`) and are enforced by the Zod schemas in `src/schemas`. Server-managed fields
 (`id`, `createdAt`, `updatedAt`, `timeline`, `completedAt`, …) are never accepted from clients.
 
@@ -153,7 +153,7 @@ encrypted with AES-256-GCM (`DATA_ENCRYPTION_KEY`) and never returned.
 | `DELETE /emails/{id}`                             | 204                                                                                                                                          |
 | `/templates`                                      | Standard CRUD, plus `POST /templates/{id}/duplicate` and `POST /templates/defaults` (re-add deleted defaults → `{ added, templates }`)       |
 
-Templates have a `channel`: `email` (sent from knot) or `linkedin` (filled in, copied and pasted
+Templates have a `channel`: `email` (sent from iamcandidate) or `linkedin` (filled in, copied and pasted
 into LinkedIn; `subject` is empty). Templates created without a channel, and ones from before
 channels existed, are `email`.
 
@@ -216,7 +216,7 @@ when the server has no Google credentials.
 
 Puts upcoming interviews (timed, with the meeting link), follow-ups (application, contact and
 open-referral dates, all-day) and open tasks' due dates on the user's primary calendar. Event
-ids are derived from the knot item, so syncing again updates events instead of duplicating them.
+ids are derived from the iamcandidate item, so syncing again updates events instead of duplicating them.
 Items that no longer qualify (cancelled, done, past, deleted) are removed on the next sync. At most
 150 events per sync. Uses the Google OAuth client from [google-drive.md](google-drive.md).
 
@@ -226,7 +226,7 @@ Items that no longer qualify (cancelled, done, past, deleted) are removed on the
 | `GET /integrations/google-calendar/auth-url`         | `{ url }`, consent for `calendar.events` with a signed `state` (`p: "calendar"`)     |
 | `POST /integrations/google-calendar/connect`         | `{ code, state }` from the shared callback page → status                             |
 | `POST /integrations/google-calendar/sync?tzOffset=`  | Sync now → status with `lastSync: { synced, removed, interviews, followUps, tasks }` |
-| `DELETE /integrations/google-calendar?removeEvents=` | Revoke and forget; `removeEvents=true` first deletes the events knot created         |
+| `DELETE /integrations/google-calendar?removeEvents=` | Revoke and forget; `removeEvents=true` first deletes the events iamcandidate created         |
 
 ## GitHub
 
@@ -246,7 +246,7 @@ Projects link to a repository through their `repository` URL; any github.com URL
 
 ## LinkedIn
 
-LinkedIn's API doesn't let other apps read connections or saved jobs, so knot imports the CSV
+LinkedIn's API doesn't let other apps read connections or saved jobs, so iamcandidate imports the CSV
 files from LinkedIn's "Get a copy of your data" export. The file type is detected from its header.
 
 | File                   | Becomes                                                    |
@@ -260,16 +260,16 @@ files from LinkedIn's "Get a copy of your data" export. The file type is detecte
 | `GET /integrations/linkedin`         | `{ lastImportAt?, imports: { connections?, saved_jobs?, job_applications? } }`                                          |
 | `POST /integrations/linkedin/import` | `{ csv, dryRun }` (≤ 5 MB, ≤ 5000 rows) → `{ kind, rows, created, skipped, invalid, companiesCreated, sample, dryRun }` |
 
-Rows already in knot are skipped: contacts by LinkedIn URL or exact name, applications by job URL
+Rows already in iamcandidate are skipped: contacts by LinkedIn URL or exact name, applications by job URL
 or company + role. Companies match by name, ignoring suffixes like "Inc" or "Pvt Ltd". The export
 has no work mode, so imported applications are set to `onsite`.
 
 ## AWS S3 backup
 
 Copies the user's data to their own bucket with an access key they provide (secret stored
-encrypted). Each backup writes `<prefix>knot-backup/data/knot-<timestamp>.json`, a JSON export of
+encrypted). Each backup writes `<prefix>iamcandidate-backup/data/iamcandidate-<timestamp>.json`, a JSON export of
 every record without credentials, and copies each document to
-`<prefix>knot-backup/documents/<id>/<name>`, skipping files already there with the same size.
+`<prefix>iamcandidate-backup/documents/<id>/<name>`, skipping files already there with the same size.
 
 | Route                              |                                                                                                                           |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -280,7 +280,7 @@ every record without credentials, and copies each document to
 
 API Gateway allows 30 seconds per request, so a backup runs in steps of about 20 seconds: call
 again with `cursor` until `done`. The key needs `s3:PutObject` and `s3:GetObject` on
-`arn:aws:s3:::<bucket>/<prefix>knot-backup/*`.
+`arn:aws:s3:::<bucket>/<prefix>iamcandidate-backup/*`.
 
 ## System
 

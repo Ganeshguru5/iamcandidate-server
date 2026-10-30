@@ -1,7 +1,7 @@
 # Local infrastructure for `sam local start-api`:
 #   - DynamoDB Local on http://localhost:8000
 #   - MinIO (S3-compatible) on http://localhost:9000, console on http://localhost:9001
-# Lambda containers join the `knot-local` network (see `npm run start`) and
+# Lambda containers join the `iamcandidate-local` network (see `npm run start`) and
 # reach these services as http://dynamodb:8000 and http://minio:9000.
 services:
   dynamodb:
@@ -25,8 +25,8 @@ services:
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       # Local-only credentials for the throwaway MinIO container (not AWS keys).
-      MINIO_ROOT_USER: knot-local
-      MINIO_ROOT_PASSWORD: knot-local-secret
+      MINIO_ROOT_USER: iamcandidate-local
+      MINIO_ROOT_PASSWORD: iamcandidate-local-secret
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -39,4 +39,4 @@ volumes:
 
 networks:
   default:
-    name: knot-local
+    name: iamcandidate-local

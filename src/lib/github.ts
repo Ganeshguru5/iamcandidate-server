@@ -25,7 +25,7 @@ export async function githubRequest<T>(token: string, path: string, what: string
       headers: {
         accept: "application/vnd.github+json",
         authorization: `Bearer ${token}`,
-        "user-agent": "knot-server",
+        "user-agent": "iamcandidate-server",
         "x-github-api-version": "2022-11-28",
       },
       signal: AbortSignal.timeout(15_000),

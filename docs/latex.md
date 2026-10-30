@@ -16,15 +16,15 @@ Compile errors return **400 `COMPILE_ERROR`** with `details: { line?, log }`; th
 
 ## Local setup
 
-`npm run dev` uses `knot-server/.tools/tectonic/tectonic(.exe)` if present, otherwise
+`npm run dev` uses `iamcandidate-server/.tools/tectonic/tectonic(.exe)` if present, otherwise
 `tectonic` on PATH. Install it once:
 
 - **Windows:** download `tectonic-0.17.0-x86_64-pc-windows-msvc.zip` from the
   [releases page](https://github.com/tectonic-typesetting/tectonic/releases) and unzip
-  `tectonic.exe` into `knot-server/.tools/tectonic/`.
+  `tectonic.exe` into `iamcandidate-server/.tools/tectonic/`.
 - **macOS:** `brew install tectonic` · **Linux:** use the `x86_64-unknown-linux-musl` release.
 
-The package cache lives in `knot-server/.tools/tectonic-cache` (dev server). The **first
+The package cache lives in `iamcandidate-server/.tools/tectonic-cache` (dev server). The **first
 compile downloads ~40 MB of LaTeX packages and can take a few minutes**; afterwards compiles
 take 1–3 s. Locally the time limit is 5 minutes (`LATEX_TIMEOUT_MS`), in AWS 45 s.
 

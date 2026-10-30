@@ -1,8 +1,8 @@
-# knot-server — knot backend
+# iamcandidate-server — iamcandidate backend
 
-Serverless backend for the [knot frontend](../knot/README.md): AWS SAM, API Gateway
+Serverless backend for the [iamcandidate frontend](../iamcandidate-ui/README.md): AWS SAM, API Gateway
 HTTP API, Lambda (Node.js 22 + TypeScript), DynamoDB and S3. It implements exactly the data
-contract the frontend's service layer (`knot/src/lib/services/contracts.ts`) already uses.
+contract the frontend's service layer (`iamcandidate-ui/src/lib/services/contracts.ts`) already uses.
 
 No AI services are included in this phase.
 
@@ -49,7 +49,7 @@ npm run dev             # API on http://localhost:3001, restarts on code changes
 
 The first start creates a local database (dynalite, saved in `.local/`), loads the demo
 data and the admin login `demo@example.com` / `demo123`. File uploads work too. Then in
-`../knot`: set `NEXT_PUBLIC_API_MODE=api` in `.env.local` and `npm run dev`.
+`../iamcandidate-ui`: set `NEXT_PUBLIC_API_MODE=api` in `.env.local` and `npm run dev`.
 
 To check the real Lambda + API Gateway setup before deploying, use the Docker-based
 `sam local` workflow described in the guide.
@@ -79,7 +79,7 @@ See [docs/deployment.md](docs/deployment.md).
 template.yaml            SAM: HTTP API, 6 functions, table, bucket, IAM, log groups
 samconfig.toml           build/deploy defaults (ap-south-1; dev + prod environments)
 env.local.json           Lambda env for `sam local` (local endpoints only, no secrets)
-docker-compose.yml       DynamoDB Local + MinIO on the `knot-local` network
+docker-compose.yml       DynamoDB Local + MinIO on the `iamcandidate-local` network
 src/
   functions/             Lambda entry points — one per function, merging route tables
   handlers/              route tables: validate input → call service → standard response

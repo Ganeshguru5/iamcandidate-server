@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >-
-  knot backend (knot-server): API Gateway HTTP API + Lambda (Node.js/TypeScript)
+  iamcandidate backend (iamcandidate-server): API Gateway HTTP API + Lambda (Node.js/TypeScript)
   + DynamoDB (single table) + private S3 bucket for documents. No AI services.
 
 Parameters:
@@ -15,7 +15,7 @@ Parameters:
     Default: http://localhost:3000
     Description: >-
       Frontend origins allowed by CORS (API and S3 uploads), comma-separated.
-      Set this to the deployed frontend domain, e.g. https://knot.example.com.
+      Set this to the deployed frontend domain, e.g. https://iamcandidate.example.com.
   AuthSecret:
     Type: String
     NoEcho: true
@@ -112,7 +112,7 @@ Resources:
   HttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
-      Description: knot REST API
+      Description: iamcandidate REST API
       CorsConfiguration:
         AllowOrigins: !Ref AllowedOrigins
         AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]

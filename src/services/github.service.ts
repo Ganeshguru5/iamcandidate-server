@@ -184,7 +184,7 @@ export const githubService = {
     })
   },
 
-  /** Creates a knot project from a repository (or returns the one already linked). */
+  /** Creates a iamcandidate project from a repository (or returns the one already linked). */
   async importRepo(userId: string, fullName: string): Promise<Project> {
     const path = repoPath(fullName)
     const projects = await repositories.projects.list(userId)

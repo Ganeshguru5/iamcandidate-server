@@ -24,11 +24,11 @@ screen's scopes (step 3).
 
 ## 1. Create the Google OAuth client (one time, ~10 minutes)
 
-1. Open <https://console.cloud.google.com/> and create a project (e.g. "knot").
+1. Open <https://console.cloud.google.com/> and create a project (e.g. "iamcandidate").
 2. **APIs & Services → Library** → search **Google Drive API** → **Enable**. For Calendar
    sync, also enable **Google Calendar API**.
 3. **APIs & Services → OAuth consent screen** (Google Auth Platform):
-   - User type **External**, app name "knot", your email as support and developer contact.
+   - User type **External**, app name "iamcandidate", your email as support and developer contact.
    - **Data access / Scopes**: add `.../auth/drive.readonly`, `openid`, `.../auth/userinfo.email`,
      and `.../auth/calendar.events` for Calendar sync.
    - **Audience → Test users**: add every Google account that will connect (e.g. your Gmail).
@@ -41,7 +41,7 @@ screen's scopes (step 3).
 
 ## 2. Configure the backend
 
-**`npm run dev`** — add to `knot-server/.env` (git-ignored), then restart:
+**`npm run dev`** — add to `iamcandidate-server/.env` (git-ignored), then restart:
 
 ```bash
 GOOGLE_CLIENT_ID=1234567890-abc.apps.googleusercontent.com
@@ -82,4 +82,4 @@ allow. You land back on the Drive page and can browse and **Add to Docs**.
 | Google shows `redirect_uri_mismatch`                           | The redirect URI must match the OAuth client's entry exactly (scheme, host, port, path). |
 | Google shows "Access blocked … has not completed verification" | Add your account under **Audience → Test users**.                                        |
 | "This Google sign-in has expired or wasn't started here"       | The sign-in took over 10 minutes or was opened in another session — connect again.       |
-| "Google didn't grant offline access"                           | Remove knot at <https://myaccount.google.com/permissions> and connect again.      |
+| "Google didn't grant offline access"                           | Remove iamcandidate at <https://myaccount.google.com/permissions> and connect again.      |

@@ -66,7 +66,7 @@ function statusError(status: number, host: string): AppError {
     return new AppError(
       502,
       "INTEGRATION_ERROR",
-      `${host} didn't let knot read that page. Fill in the details yourself, or use the knot browser extension on the page.`,
+      `${host} didn't let iamcandidate read that page. Fill in the details yourself, or use the iamcandidate browser extension on the page.`,
     )
   }
   return new AppError(502, "INTEGRATION_ERROR", `${host} answered with an error (${status})`)
@@ -250,7 +250,7 @@ export function createJobExtractor(fetcher: Fetcher = fetchPublic) {
       throw new AppError(
         502,
         "INTEGRATION_ERROR",
-        "naukri.com didn't let knot read that job. Copy the job's text from the page and paste it here, or fill in the details yourself.",
+        "naukri.com didn't let iamcandidate read that job. Copy the job's text from the page and paste it here, or fill in the details yourself.",
       )
     }
     return { url: url.toString(), via: "page", ...result }

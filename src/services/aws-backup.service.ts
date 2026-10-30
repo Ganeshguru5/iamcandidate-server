@@ -18,7 +18,7 @@ import { queryAll, stripKeys, userPk } from "../repositories/dynamodb/table"
 import { activitiesService } from "./activities.service"
 
 /**
- * Backs up a user's knot data to their own S3 bucket with an access key they
+ * Backs up a user's iamcandidate data to their own S3 bucket with an access key they
  * provide: a JSON export of everything, plus a copy of every document file.
  *
  * API Gateway allows 30 seconds per request, so a backup runs in steps: each
@@ -26,7 +26,7 @@ import { activitiesService } from "./activities.service"
  * until `done`. Files already in the bucket with the same size are skipped.
  */
 const STEP_BUDGET_MS = 20_000
-const ROOT = "knot-backup/"
+const ROOT = "iamcandidate-backup/"
 
 export interface AwsBackupInput {
   bucket: string
@@ -79,7 +79,7 @@ function explain(error: unknown, bucket: string): never {
     case "AccessDenied":
     case "Forbidden":
       throw new BadRequestError(
-        `The access key isn't allowed to write to ${bucket}. Give it s3:PutObject and s3:GetObject on the bucket (see the policy shown in knot).`,
+        `The access key isn't allowed to write to ${bucket}. Give it s3:PutObject and s3:GetObject on the bucket (see the policy shown in iamcandidate).`,
       )
     case "NoSuchBucket":
       throw new BadRequestError(`The bucket ${bucket} doesn't exist.`)
@@ -124,7 +124,7 @@ async function exportData(userId: string) {
     queryAll(userPk(userId), "ACTIVITY#"),
   ])
   return {
-    format: "knot-backup",
+    format: "iamcandidate-backup",
     version: 1,
     exportedAt: nowIso(),
     userId,
@@ -180,7 +180,7 @@ export const awsBackupService = {
         new PutObjectCommand({
           Bucket: input.bucket,
           Key: `${prefix}${ROOT}connection-check.txt`,
-          Body: `knot can write backups here. Checked ${nowIso()}.\n`,
+          Body: `iamcandidate can write backups here. Checked ${nowIso()}.\n`,
           ContentType: "text/plain",
         }),
       )
@@ -243,7 +243,7 @@ export const awsBackupService = {
         .toISOString()
         .replace(/[-:]/g, "")
         .replace(/\.\d+Z$/, "Z")
-      const dataKey = `${base}data/knot-${stamp}.json`
+      const dataKey = `${base}data/iamcandidate-${stamp}.json`
       try {
         await client.send(
           new PutObjectCommand({
@@ -259,7 +259,7 @@ export const awsBackupService = {
       cursor = { stamp, dataKey, index: 0, copied: 0, bytes: 0, failed: 0, total: documents.length }
     }
 
-    const knotBucket = getConfig().bucketName
+    const appBucket = getConfig().bucketName
     while (cursor.index < documents.length && Date.now() - started < STEP_BUDGET_MS) {
       const doc = documents[cursor.index]
       cursor.index++
@@ -274,7 +274,7 @@ export const awsBackupService = {
           continue
         }
         const object = await getS3Client().send(
-          new GetObjectCommand({ Bucket: knotBucket, Key: doc.s3Key }),
+          new GetObjectCommand({ Bucket: appBucket, Key: doc.s3Key }),
         )
         if (!object.Body) throw new Error("Empty object body")
         const body = await object.Body.transformToByteArray()

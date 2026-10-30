@@ -2,7 +2,7 @@ import { parseHTML } from "linkedom"
 
 /**
  * Reads job details from a job posting's HTML. A server-side port of the job
- * half of knot-extension's `src/lib/extract.js` — keep the site rules of the
+ * half of iamcandidate-extension's `src/lib/extract.js` — keep the site rules of the
  * two in step.
  *
  * Strategy, most to least specific: site rules (LinkedIn, Naukri, Indeed,

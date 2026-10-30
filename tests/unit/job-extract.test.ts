@@ -60,7 +60,7 @@ describe("job link extraction", () => {
     const { fetcher } = fakeFetch({
       [link]: { body: "<html><body><div id='root'></div></body></html>" },
     })
-    await expect(createJobExtractor(fetcher).extract(link)).rejects.toThrow(/naukri\.com didn't let knot/)
+    await expect(createJobExtractor(fetcher).extract(link)).rejects.toThrow(/naukri\.com didn't let iamcandidate/)
   })
 
   it("reads Lever jobs with workplace type and salary", async () => {
@@ -232,7 +232,7 @@ describe("job link extraction", () => {
     const { fetcher } = fakeFetch({ "https://www.indeed.com/viewjob?jk=abc": { status: 403 } })
     await expect(
       createJobExtractor(fetcher).extract("https://www.indeed.com/viewjob?jk=abc"),
-    ).rejects.toThrow(/didn't let knot read that page/)
+    ).rejects.toThrow(/didn't let iamcandidate read that page/)
   })
 })
 

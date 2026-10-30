@@ -117,7 +117,7 @@ describe("portfolio", () => {
     expect(pub.body.data).not.toHaveProperty("PK")
   })
 
-  it("rejects other accounts, even knot admins, and anonymous callers", async () => {
+  it("rejects other accounts, even iamcandidate admins, and anonymous callers", async () => {
     const admin = await tokenFor("admin@example.com")
     const res = await call(handler, "PUT", "/admin/portfolio", { body: content, token: admin })
     expect(res.status).toBe(403)

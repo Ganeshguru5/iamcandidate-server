@@ -16,7 +16,7 @@ Both run the same route handlers, auth and validation, on `http://localhost:3001
 ## Lightweight: `npm run dev`
 
 ```bash
-cd knot-server
+cd iamcandidate-server
 npm install
 npm run dev
 ```
@@ -52,7 +52,7 @@ Next.js (localhost:3000)
    │  NEXT_PUBLIC_API_MODE=api, NEXT_PUBLIC_API_URL=http://localhost:3001
    ▼
 sam local start-api (localhost:3001)
-   │  one Docker container per Lambda, on the `knot-local` network
+   │  one Docker container per Lambda, on the `iamcandidate-local` network
    ├──► DynamoDB Local   http://dynamodb:8000  (host: localhost:8000)
    └──► MinIO (S3 API)   http://minio:9000     (host: localhost:9000, console :9001)
 ```
@@ -72,7 +72,7 @@ browser can reach them, while Lambda containers talk to `http://minio:9000`.
 
 ```bash
 # Terminal 1 — infrastructure
-cd knot-server
+cd iamcandidate-server
 npm install
 cp .env.example .env
 npm run local:up          # docker compose: DynamoDB Local + MinIO
@@ -84,7 +84,7 @@ npm run build             # sam build (esbuild bundles each function)
 npm run start             # sam local start-api on :3001
 
 # Terminal 3 — frontend
-cd ../knot
+cd ../iamcandidate-ui
 cp .env.example .env.local   # then set NEXT_PUBLIC_API_MODE=api
 npm run dev
 ```
@@ -95,8 +95,8 @@ serves the built artifacts in `.aws-sam/`.
 ### Using a single `docker run` instead of compose
 
 ```bash
-docker network create knot-local
-docker run -d --name dynamodb --network knot-local -p 8000:8000 amazon/dynamodb-local -jar DynamoDBLocal.jar -sharedDb
+docker network create iamcandidate-local
+docker run -d --name dynamodb --network iamcandidate-local -p 8000:8000 amazon/dynamodb-local -jar DynamoDBLocal.jar -sharedDb
 ```
 
 Keep `-sharedDb`: without it DynamoDB Local keeps a separate database per access key and
@@ -152,7 +152,7 @@ npm run create-user -- --email you@example.com --name "Your Name" --role admin
 
 ```bash
 sam local invoke CareerFunction --event events/list-applications.json \
-  --env-vars env.local.json --docker-network knot-local
+  --env-vars env.local.json --docker-network iamcandidate-local
 ```
 
 ## Troubleshooting
@@ -161,7 +161,7 @@ sam local invoke CareerFunction --event events/list-applications.json \
 | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Frontend toast "Can't reach the API at http://localhost:3001"          | `npm run start` isn't running, or `NEXT_PUBLIC_API_URL` is wrong (restart `next dev` after changing env).                   |
 | `ResourceNotFoundException` / 500 on every call                        | Table missing — run `npm run local:setup`. If you started DynamoDB Local yourself, add `-sharedDb`.                         |
-| `getaddrinfo ENOTFOUND dynamodb`                                       | SAM containers aren't on the compose network: start with `npm run start` (it passes `--docker-network knot-local`).         |
+| `getaddrinfo ENOTFOUND dynamodb`                                       | SAM containers aren't on the compose network: start with `npm run start` (it passes `--docker-network iamcandidate-local`).         |
 | CORS error in the browser                                              | The frontend origin must be listed in `ALLOWED_ORIGINS` (env.local.json locally, `AllowedOrigins` parameter in AWS).        |
 | Upload fails at the PUT step                                           | MinIO not running, or the bucket is missing (`npm run local:setup`).                                                        |
 | "Missing required environment variable DYNAMODB_TABLE" in scripts      | `cp .env.example .env`.                                                                                                     |

@@ -230,16 +230,16 @@ async function githubFetch(input: string | URL | Request, init?: RequestInit) {
     case "/user":
       return json({ login: "octo", name: "Octo Cat", avatar_url: "https://avatars.example/octo" })
     case "/user/repos":
-      return json([rawRepo("knot"), rawRepo("blog", { homepage: "https://blog.example" })])
-    case "/repos/octo/knot":
-      return json(rawRepo("knot"))
-    case "/repos/octo/knot/languages":
+      return json([rawRepo("iamcandidate"), rawRepo("blog", { homepage: "https://blog.example" })])
+    case "/repos/octo/iamcandidate":
+      return json(rawRepo("iamcandidate"))
+    case "/repos/octo/iamcandidate/languages":
       return json({ CSS: 10, TypeScript: 900 })
-    case "/repos/octo/knot/commits":
+    case "/repos/octo/iamcandidate/commits":
       return json([
         {
           sha: "abcdef1234567",
-          html_url: "https://github.com/octo/knot/commit/abcdef1",
+          html_url: "https://github.com/octo/iamcandidate/commit/abcdef1",
           commit: {
             message: "Add calendar sync\n\nLonger body",
             author: { name: "Octo", date: "2026-10-20T09:00:00Z" },
@@ -247,7 +247,7 @@ async function githubFetch(input: string | URL | Request, init?: RequestInit) {
           author: { login: "octo" },
         },
       ])
-    case "/repos/octo/knot/pulls":
+    case "/repos/octo/iamcandidate/pulls":
       return json([
         {
           number: 7,
@@ -255,7 +255,7 @@ async function githubFetch(input: string | URL | Request, init?: RequestInit) {
           state: "closed",
           merged_at: "2026-10-20T09:30:00Z",
           updated_at: "2026-10-20T09:30:00Z",
-          html_url: "https://github.com/octo/knot/pull/7",
+          html_url: "https://github.com/octo/iamcandidate/pull/7",
           user: { login: "octo" },
         },
       ])
@@ -280,11 +280,11 @@ describe("GitHub", () => {
   })
 
   it("parses repository URLs", () => {
-    expect(parseRepo("https://github.com/octo/knot")).toBe("octo/knot")
-    expect(parseRepo("https://github.com/octo/knot.git")).toBe("octo/knot")
+    expect(parseRepo("https://github.com/octo/iamcandidate")).toBe("octo/iamcandidate")
+    expect(parseRepo("https://github.com/octo/iamcandidate.git")).toBe("octo/iamcandidate")
     expect(parseRepo("git@github.com:octo/my.repo.git")).toBe("octo/my.repo")
-    expect(parseRepo("https://github.com/octo/knot/tree/main")).toBe("octo/knot")
-    expect(parseRepo("https://gitlab.com/octo/knot")).toBeUndefined()
+    expect(parseRepo("https://github.com/octo/iamcandidate/tree/main")).toBe("octo/iamcandidate")
+    expect(parseRepo("https://gitlab.com/octo/iamcandidate")).toBeUndefined()
   })
 
   it("connects with a valid token and stores it encrypted", async () => {
@@ -307,18 +307,18 @@ describe("GitHub", () => {
     await connectGitHub()
     await repositories.projects.create(USER, {
       id: "prj_1",
-      name: "knot",
+      name: "iamcandidate",
       description: "",
       status: "development",
       progress: 50,
       technologies: [],
-      repository: "https://github.com/Octo/knot.git",
+      repository: "https://github.com/Octo/iamcandidate.git",
       startedAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     })
     const res = await call<GitHubRepo[]>(handler, "GET", "/integrations/github/repos")
     expect(res.body.data?.map((r) => [r.fullName, r.projectId])).toEqual([
-      ["octo/knot", "prj_1"],
+      ["octo/iamcandidate", "prj_1"],
       ["octo/blog", undefined],
     ])
   })
@@ -326,7 +326,7 @@ describe("GitHub", () => {
   it("returns recent commits and pull requests", async () => {
     await connectGitHub()
     const res = await call<GitHubActivity>(handler, "GET", "/integrations/github/activity", {
-      query: { repo: "octo/knot" },
+      query: { repo: "octo/iamcandidate" },
     })
     expect(res.status).toBe(200)
     expect(res.body.data?.commits[0]).toMatchObject({
@@ -339,18 +339,18 @@ describe("GitHub", () => {
   it("creates a project from a repository once", async () => {
     await connectGitHub()
     const first = await call<Project>(handler, "POST", "/integrations/github/import", {
-      body: { repo: "octo/knot" },
+      body: { repo: "octo/iamcandidate" },
     })
     expect(first.status).toBe(201)
     expect(first.body.data).toMatchObject({
-      name: "knot",
-      repository: "https://github.com/octo/knot",
+      name: "iamcandidate",
+      repository: "https://github.com/octo/iamcandidate",
       technologies: ["TypeScript", "CSS", "nextjs"],
       status: "development",
       startedAt: "2025-01-01T00:00:00Z",
     })
     const again = await call<Project>(handler, "POST", "/integrations/github/import", {
-      body: { repo: "octo/knot" },
+      body: { repo: "octo/iamcandidate" },
     })
     expect(again.body.data?.id).toBe(first.body.data?.id)
     expect(await repositories.projects.list(USER)).toHaveLength(1)
@@ -624,7 +624,7 @@ function fakeBucket() {
 }
 
 const awsBody = {
-  bucket: "my-knot-backups",
+  bucket: "my-iamcandidate-backups",
   region: "ap-south-1",
   prefix: "personal/",
   accessKeyId: "AKIAIOSFODNN7EXAMPLE",
@@ -646,11 +646,11 @@ describe("AWS S3 backup", () => {
     expect(res.status).toBe(200)
     expect(res.body.data).toMatchObject({
       connected: true,
-      bucket: "my-knot-backups",
+      bucket: "my-iamcandidate-backups",
       prefix: "personal/",
       accessKeyId: "…MPLE",
     })
-    expect([...bucket.objects.keys()]).toEqual(["personal/knot-backup/connection-check.txt"])
+    expect([...bucket.objects.keys()]).toEqual(["personal/iamcandidate-backup/connection-check.txt"])
     const stored = await settingsRepository.get(USER, "AWS_BACKUP")
     expect(JSON.stringify(stored)).not.toContain(awsBody.secretAccessKey)
   })
@@ -720,16 +720,16 @@ describe("AWS S3 backup", () => {
     })
     expect(res.body.data).toMatchObject({ done: true, copied: 1, total: 1, failed: 0 })
     expect(reads).toEqual(["users/usr_test/documents/doc_1/Resume 2026.pdf"])
-    expect(bucket.objects.get("personal/knot-backup/documents/doc_1/Resume 2026.pdf")?.body).toBe(
+    expect(bucket.objects.get("personal/iamcandidate-backup/documents/doc_1/Resume 2026.pdf")?.body).toBe(
       "%PDF resume",
     )
     const dataKey = res.body.data?.dataKey as string
-    expect(dataKey).toMatch(/^personal\/knot-backup\/data\/knot-\d{8}T\d{6}Z\.json$/)
+    expect(dataKey).toMatch(/^personal\/iamcandidate-backup\/data\/iamcandidate-\d{8}T\d{6}Z\.json$/)
     const exported = JSON.parse(bucket.objects.get(dataKey)?.body ?? "{}") as Record<
       string,
       unknown
     >
-    expect(exported).toMatchObject({ format: "knot-backup", userId: USER })
+    expect(exported).toMatchObject({ format: "iamcandidate-backup", userId: USER })
     expect((exported.documents as unknown[]).length).toBe(2)
     const text = JSON.stringify(exported)
     expect(text).not.toContain("s3Key")

@@ -1,5 +1,5 @@
 /**
- * API models. These mirror `knot/src/lib/types` — the frontend is the source
+ * API models. These mirror `iamcandidate-ui/src/lib/types` — the frontend is the source
  * of truth for the contract. Input shapes live next to their Zod schemas in
  * `src/schemas`.
  */
@@ -511,7 +511,7 @@ export const TEMPLATE_CATEGORIES = [
   "other",
 ] as const
 
-/** Where a template is used: emails (sent from knot) or LinkedIn messages (copied). */
+/** Where a template is used: emails (sent from iamcandidate) or LinkedIn messages (copied). */
 export const TEMPLATE_CHANNELS = ["email", "linkedin"] as const
 export type TemplateChannel = (typeof TEMPLATE_CHANNELS)[number]
 
@@ -607,7 +607,7 @@ export interface GoogleCalendarStatus {
   lastSync?: CalendarSyncSummary
 }
 
-/** Same token storage as Drive, plus the ids of the events knot created. */
+/** Same token storage as Drive, plus the ids of the events iamcandidate created. */
 export interface StoredGoogleCalendar extends StoredGoogleDrive {
   syncedEventIds: string[]
   lastSyncedAt?: ISODate
@@ -650,7 +650,7 @@ export interface GitHubRepo {
   stars: number
   defaultBranch: string
   pushedAt?: ISODate
-  /** Id of the knot project whose repository is this repo, if any. */
+  /** Id of the iamcandidate project whose repository is this repo, if any. */
   projectId?: ID
 }
 
@@ -690,7 +690,7 @@ export interface LinkedInImportResult {
   rows: number
   /** New contacts or applications (would be) created. */
   created: number
-  /** Rows matching something already in knot. */
+  /** Rows matching something already in iamcandidate. */
   skipped: number
   /** Rows without the required columns. */
   invalid: number

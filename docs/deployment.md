@@ -23,7 +23,7 @@ Region: **ap-south-1 (Mumbai)**, set in `samconfig.toml`.
 ## First deploy
 
 ```bash
-cd knot-server
+cd iamcandidate-server
 npm install
 npm run validate          # sam validate --lint
 npm run build             # sam build
@@ -37,7 +37,7 @@ Answer the prompts:
 | Stack name                                                             | `personal-os-dev`                                                                                                               |
 | Region                                                                 | `ap-south-1`                                                                                                                    |
 | Parameter `Stage`                                                      | `dev`                                                                                                                           |
-| Parameter `AllowedOrigins`                                             | your frontend origin(s), comma-separated, e.g. `https://knot.example.com,http://localhost:3000`                                 |
+| Parameter `AllowedOrigins`                                             | your frontend origin(s), comma-separated, e.g. `https://iamcandidate.example.com,http://localhost:3000`                                 |
 | Parameter `AuthSecret`                                                 | 32+ random characters: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`                         |
 | Parameter `EncryptionKey`                                              | Another 32+ random characters (encrypts users' SMTP passwords). Keep it safe: changing it makes saved SMTP passwords unreadable |
 | Parameters `GoogleClientId`, `GoogleClientSecret`, `GoogleRedirectUri` | Optional, for Google Drive — see [google-drive.md](google-drive.md). Leave empty to disable                                     |
@@ -49,7 +49,7 @@ Answer the prompts:
 The outputs include `ApiUrl`. Point the frontend at it:
 
 ```bash
-# knot/.env.local (or your hosting provider's env settings)
+# iamcandidate/.env.local (or your hosting provider's env settings)
 NEXT_PUBLIC_API_MODE=api
 NEXT_PUBLIC_API_URL=https://<api-id>.execute-api.ap-south-1.amazonaws.com
 ```

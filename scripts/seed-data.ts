@@ -1,6 +1,6 @@
 /**
  * Demo data shared by `npm run seed` and `npm run dev`. The data comes straight
- * from the frontend (`../knot/src/lib/mock`, see scripts/tsconfig.json), so
+ * from the frontend (`../iamcandidate-ui/src/lib/mock`, see scripts/tsconfig.json), so
  * mock mode and API mode start with the same content.
  */
 import { createSeedDatabase, DEMO_CREDENTIALS } from "@/lib/mock"

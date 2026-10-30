@@ -1,7 +1,7 @@
 import type { EmailTemplate } from "../models"
 
 /**
- * Starter templates every account gets: emails (sent from knot) and LinkedIn
+ * Starter templates every account gets: emails (sent from iamcandidate) and LinkedIn
  * messages (copied into LinkedIn). Variables in {{ }} are filled in by the
  * frontend: name, company, role, jobUrl, jobId and senderName. Anything not
  * filled stays visible so it's easy to spot.

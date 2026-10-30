@@ -56,7 +56,7 @@ export const DEFAULT_PRICING: PricingConfig = {
         "Priority support",
       ],
       ctaLabel: "Contact us",
-      ctaHref: "mailto:hello@example.com?subject=knot%20Coach",
+      ctaHref: "mailto:hello@example.com?subject=iamcandidate%20Coach",
       highlighted: false,
       visible: true,
     },

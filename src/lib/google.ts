@@ -372,7 +372,7 @@ async function calendarRequest(
 
 /**
  * Creates or updates the event with our own id in the primary calendar.
- * Ids are stable per knot item, so syncing again never duplicates events.
+ * Ids are stable per iamcandidate item, so syncing again never duplicates events.
  */
 export async function upsertCalendarEvent(
   accessToken: string,

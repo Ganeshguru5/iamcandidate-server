@@ -48,49 +48,49 @@ function loadedPackages(source: string): string[] {
   }
   return names
 }
-export const PDFTEX_FONTS_FILE = "knot-pdftex-fonts.tex"
+export const PDFTEX_FONTS_FILE = "iamcandidate-pdftex-fonts.tex"
 
-export const PDFTEX_FONTS_SOURCE = String.raw`% knot: OpenType stand-ins for pdfLaTeX-only font packages (see latex-fonts.ts).
+export const PDFTEX_FONTS_SOURCE = String.raw`% iamcandidate: OpenType stand-ins for pdfLaTeX-only font packages (see latex-fonts.ts).
 % Each hook records the replacement for a package the document loads; they are
 % applied at \begin{document} only if the document is still in TU encoding.
 \makeatletter
-\def\knot@fonts{}
-\def\knot@otf#1#2#3#4#5#6{%
-  \g@addto@macro\knot@fonts{%
+\def\iamcandidate@fonts{}
+\def\iamcandidate@otf#1#2#3#4#5#6{%
+  \g@addto@macro\iamcandidate@fonts{%
     #1{#2}[Extension=.otf, UprightFont=*#3, BoldFont=*#4,
       ItalicFont=*#5, BoldItalicFont=*#6, Ligatures=TeX]}}
-\def\knot@gyre#1#2{\knot@otf#1{texgyre#2}{-regular}{-bold}{-italic}{-bolditalic}}
-\def\knot@map#1#2{\AddToHook{package/#1/after}{#2}}
+\def\iamcandidate@gyre#1#2{\iamcandidate@otf#1{texgyre#2}{-regular}{-bold}{-italic}{-bolditalic}}
+\def\iamcandidate@map#1#2{\AddToHook{package/#1/after}{#2}}
 
-\knot@map{charter}{\knot@otf\setmainfont{XCharter}{-Roman}{-Bold}{-Italic}{-BoldItalic}}
-\knot@map{times}{\knot@gyre\setmainfont{termes}}
-\knot@map{mathptmx}{\knot@gyre\setmainfont{termes}}
-\knot@map{tgtermes}{\knot@gyre\setmainfont{termes}}
-\knot@map{palatino}{\knot@gyre\setmainfont{pagella}}
-\knot@map{mathpazo}{\knot@gyre\setmainfont{pagella}}
-\knot@map{tgpagella}{\knot@gyre\setmainfont{pagella}}
-\knot@map{bookman}{\knot@gyre\setmainfont{bonum}}
-\knot@map{tgbonum}{\knot@gyre\setmainfont{bonum}}
-\knot@map{newcent}{\knot@gyre\setmainfont{schola}}
-\knot@map{tgschola}{\knot@gyre\setmainfont{schola}}
-\knot@map{helvet}{\knot@gyre\setsansfont{heros}}
-\knot@map{tgheros}{\knot@gyre\setsansfont{heros}}
-\knot@map{avant}{\knot@gyre\setsansfont{adventor}}
-\knot@map{tgadventor}{\knot@gyre\setsansfont{adventor}}
-\knot@map{courier}{\knot@gyre\setmonofont{cursor}}
-\knot@map{tgcursor}{\knot@gyre\setmonofont{cursor}}
+\iamcandidate@map{charter}{\iamcandidate@otf\setmainfont{XCharter}{-Roman}{-Bold}{-Italic}{-BoldItalic}}
+\iamcandidate@map{times}{\iamcandidate@gyre\setmainfont{termes}}
+\iamcandidate@map{mathptmx}{\iamcandidate@gyre\setmainfont{termes}}
+\iamcandidate@map{tgtermes}{\iamcandidate@gyre\setmainfont{termes}}
+\iamcandidate@map{palatino}{\iamcandidate@gyre\setmainfont{pagella}}
+\iamcandidate@map{mathpazo}{\iamcandidate@gyre\setmainfont{pagella}}
+\iamcandidate@map{tgpagella}{\iamcandidate@gyre\setmainfont{pagella}}
+\iamcandidate@map{bookman}{\iamcandidate@gyre\setmainfont{bonum}}
+\iamcandidate@map{tgbonum}{\iamcandidate@gyre\setmainfont{bonum}}
+\iamcandidate@map{newcent}{\iamcandidate@gyre\setmainfont{schola}}
+\iamcandidate@map{tgschola}{\iamcandidate@gyre\setmainfont{schola}}
+\iamcandidate@map{helvet}{\iamcandidate@gyre\setsansfont{heros}}
+\iamcandidate@map{tgheros}{\iamcandidate@gyre\setsansfont{heros}}
+\iamcandidate@map{avant}{\iamcandidate@gyre\setsansfont{adventor}}
+\iamcandidate@map{tgadventor}{\iamcandidate@gyre\setsansfont{adventor}}
+\iamcandidate@map{courier}{\iamcandidate@gyre\setmonofont{cursor}}
+\iamcandidate@map{tgcursor}{\iamcandidate@gyre\setmonofont{cursor}}
 
-\def\knot@TU{TU}
+\def\iamcandidate@TU{TU}
 \AddToHook{begindocument/before}{%
-  \ifx\knot@fonts\@empty\else
-    \edef\knot@enc{\encodingdefault}%
-    \ifx\knot@enc\knot@TU
+  \ifx\iamcandidate@fonts\@empty\else
+    \edef\iamcandidate@enc{\encodingdefault}%
+    \ifx\iamcandidate@enc\iamcandidate@TU
       \@ifpackageloaded{fontspec}{}{%
         % Keep the family the document picked (e.g. \familydefault = \sfdefault).
-        \let\knot@family\familydefault
+        \let\iamcandidate@family\familydefault
         \RequirePackage{fontspec}%
-        \knot@fonts
-        \let\familydefault\knot@family}%
+        \iamcandidate@fonts
+        \let\familydefault\iamcandidate@family}%
     \fi
   \fi}
 \makeatother

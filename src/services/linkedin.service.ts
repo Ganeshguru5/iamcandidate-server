@@ -234,7 +234,7 @@ async function importJobs(
       companyId,
       role,
       location: "",
-      // LinkedIn's export doesn't include the work mode; edit it in knot if it differs.
+      // LinkedIn's export doesn't include the work mode; edit it in iamcandidate if it differs.
       workMode: "onsite",
       status: applied ? "applied" : "wishlist",
       priority: "medium",

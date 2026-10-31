@@ -134,3 +134,65 @@ describe("settings", () => {
     ).toBe(400)
   })
 })
+
+describe("autofill profile", () => {
+  const empty = {
+    firstName: "", lastName: "", preferredName: "", email: "", phone: "", pronouns: "",
+    addressLine: "", city: "", state: "", postalCode: "", country: "",
+    linkedin: "", github: "", portfolio: "",
+    currentTitle: "", currentCompany: "", experienceYears: "", noticePeriod: "", currentSalary: "", expectedSalary: "",
+    workAuthorization: "", needsSponsorship: "", willingToRelocate: "",
+    school: "", degree: "", fieldOfStudy: "", graduationYear: "",
+    gender: "", ethnicity: "", disability: "", veteran: "",
+    summary: "", coverLetter: "", answers: [],
+  }
+
+  it("starts from the user's profile before the first save", async () => {
+    await call(system, "PUT", "/settings/profile", {
+      body: { name: "Alex Morgan", email: "alex@example.com", role: "Engineer", bio: "", location: "Chennai" },
+    })
+    expect((await call(system, "GET", "/settings/autofill")).body.data).toMatchObject({
+      firstName: "Alex",
+      lastName: "Morgan",
+      email: "alex@example.com",
+      city: "Chennai",
+      currentTitle: "Engineer",
+    })
+  })
+
+  it("saves the profile and gives answers ids", async () => {
+    const body = { ...empty, firstName: "Alex", workAuthorization: "yes", answers: [{ question: "Why us?", answer: "Mission" }] }
+    const saved = await call<{ answers: Array<{ id: string }> }>(system, "PUT", "/settings/autofill", { body })
+    expect(saved.status).toBe(200)
+    expect(saved.body.data?.answers[0]?.id).toMatch(/^ans_/)
+    expect(
+      (await call(system, "PUT", "/settings/autofill", { body: { ...body, workAuthorization: "maybe" } })).status,
+    ).toBe(400)
+  })
+
+  it("learns details only into empty fields and upserts answers by question", async () => {
+    await call(system, "PUT", "/settings/autofill", {
+      body: { ...empty, phone: "+91 90000 00000", answers: [{ question: "Notice period?", answer: "30 days" }] },
+    })
+    const learned = await call<{ phone: string; noticePeriod: string; answers: Array<{ question: string; answer: string }> }>(
+      system,
+      "POST",
+      "/settings/autofill/learn",
+      {
+        body: {
+          details: { phone: "123", noticePeriod: "15 days" },
+          answers: [
+            { question: "Notice period? (required)", answer: "15 days" },
+            { question: "How did you hear about us?", answer: "LinkedIn" },
+          ],
+        },
+      },
+    )
+    expect(learned.body.data?.phone).toBe("+91 90000 00000")
+    expect(learned.body.data?.noticePeriod).toBe("15 days")
+    expect(learned.body.data?.answers.map((a) => [a.question, a.answer])).toEqual([
+      ["Notice period?", "15 days"],
+      ["How did you hear about us?", "LinkedIn"],
+    ])
+  })
+})

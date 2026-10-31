@@ -294,6 +294,8 @@ again with `cursor` until `done`. The key needs `s3:PutObject` and `s3:GetObject
 | `PUT /notifications/{id}/read`          | 204                                                                                                                                        |
 | `PUT /notifications/read-all?tzOffset=` | Marks every current reminder read; returns the list                                                                                        |
 | `GET` / `PUT /settings/profile`         | `{ name, email, role, bio, location, avatarUrl? }`                                                                                         |
+| `GET` / `PUT /settings/autofill`        | What the browser extension types into application forms: contact, address, links, work, `workAuthorization` / `needsSponsorship` / `willingToRelocate` (`"yes"`, `"no"` or `""`), education, voluntary self-identification, `summary`, `coverLetter`, and `answers: [{ id?, question, answer }]`. Before the first save, `GET` starts from the profile. |
+| `POST /settings/autofill/learn`         | `{ details?, answers? }` from a form you filled: each detail fills only an empty field; each answer replaces the saved answer to the same question (matched without case, punctuation or "required"). Returns the profile. |
 | `GET` / `PUT /settings/notifications`   | `{ emailNotifications, interviewReminders, taskReminders, followUpReminders, weeklyDigest }`                                               |
 
 Notifications are data only — nothing is emailed or pushed.

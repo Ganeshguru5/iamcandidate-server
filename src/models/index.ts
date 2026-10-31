@@ -412,6 +412,61 @@ export interface UserProfile {
   avatarUrl?: string
 }
 
+/** "yes" / "no" answers to common application questions; "" when not set. */
+export type YesNo = "yes" | "no" | ""
+
+export interface AutofillAnswer {
+  id: ID
+  question: string
+  answer: string
+  updatedAt: ISODate
+}
+
+/**
+ * What the browser extension types into job application forms
+ * (`SETTINGS#AUTOFILL`), edited in the web app's Autofill page. Every field
+ * is optional text, "" when not set.
+ */
+export interface AutofillProfile {
+  firstName: string
+  lastName: string
+  preferredName: string
+  email: string
+  phone: string
+  pronouns: string
+  addressLine: string
+  city: string
+  state: string
+  postalCode: string
+  country: string
+  linkedin: string
+  github: string
+  portfolio: string
+  currentTitle: string
+  currentCompany: string
+  experienceYears: string
+  noticePeriod: string
+  currentSalary: string
+  expectedSalary: string
+  workAuthorization: YesNo
+  needsSponsorship: YesNo
+  willingToRelocate: YesNo
+  school: string
+  degree: string
+  fieldOfStudy: string
+  graduationYear: string
+  /** Voluntary self-identification, only when the user chooses to fill it. */
+  gender: string
+  ethnicity: string
+  disability: string
+  veteran: string
+  summary: string
+  coverLetter: string
+  /** Answers to other questions, matched to a form's question by its wording. */
+  answers: AutofillAnswer[]
+  updatedAt?: ISODate
+}
+
 export interface NotificationPreferences {
   emailNotifications: boolean
   interviewReminders: boolean

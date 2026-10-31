@@ -3,6 +3,8 @@ import type { Routes } from "../lib/router"
 import { validate } from "../lib/validation"
 import {
   activityQuery,
+  autofillLearnInput,
+  autofillProfileInput,
   dashboardQuery,
   notificationIdParam,
   notificationPreferencesInput,
@@ -10,6 +12,7 @@ import {
   profileInput,
 } from "../schemas/system"
 import { activitiesService } from "../services/activities.service"
+import { autofillService } from "../services/autofill.service"
 import { dashboardService } from "../services/dashboard.service"
 import { notificationsService } from "../services/notifications.service"
 import { settingsService } from "../services/settings.service"
@@ -49,6 +52,18 @@ export const settingsRoutes: Routes = {
         ctx.userId,
         validate(profileInput, ctx.body, "request body"),
       ),
+    ),
+  "GET /settings/autofill": async (ctx) => ok(await autofillService.get(ctx.userId)),
+  "PUT /settings/autofill": async (ctx) =>
+    ok(
+      await autofillService.update(
+        ctx.userId,
+        validate(autofillProfileInput, ctx.body, "request body"),
+      ),
+    ),
+  "POST /settings/autofill/learn": async (ctx) =>
+    ok(
+      await autofillService.learn(ctx.userId, validate(autofillLearnInput, ctx.body, "request body")),
     ),
   "GET /settings/notifications": async (ctx) =>
     ok(await settingsService.getNotificationPreferences(ctx.userId)),

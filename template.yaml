@@ -899,6 +899,24 @@ Resources:
             ApiId: !Ref HttpApi
             Method: PUT
             Path: /settings/profile
+        GetAutofillProfile:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: GET
+            Path: /settings/autofill
+        UpdateAutofillProfile:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: PUT
+            Path: /settings/autofill
+        LearnAutofillAnswers:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Method: POST
+            Path: /settings/autofill/learn
         GetNotificationPreferences:
           Type: HttpApi
           Properties:

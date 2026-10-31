@@ -1,4 +1,5 @@
 import type {
+  AutofillProfile,
   LinkedInStatus,
   StoredBoard,
   NotificationPreferences,
@@ -13,6 +14,7 @@ import { batchPut, deleteItem, getItem, putItem, queryAll, stripKeys, userPk } f
 
 interface SettingsDocuments {
   PROFILE: UserProfile
+  AUTOFILL: AutofillProfile
   NOTIFICATIONS: NotificationPreferences
   SMTP: StoredSmtpSettings
   GOOGLE_DRIVE: StoredGoogleDrive

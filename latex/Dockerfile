@@ -3,12 +3,21 @@
 
 # --- build the handler -----------------------------------------------------
 FROM public.ecr.aws/lambda/nodejs:22 AS build
+# Only what bundling needs: esbuild on its own (cached until its version
+# changes), then the runtime dependencies (cached until package-lock.json
+# changes). The dev tools (eslint, vitest, TypeScript…) aren't needed here and
+# made this step download hundreds of packages.
+# Prefer IPv4: where Docker has no IPv6 route (Docker Desktop on Windows),
+# npm otherwise waits minutes on each IPv6 connection before falling back.
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
+WORKDIR /tools
+RUN npm install --no-audit --no-fund esbuild@0.28.2
 WORKDIR /build
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 COPY tsconfig.json ./
 COPY src ./src
-RUN npx esbuild src/functions/latex.ts --bundle --platform=node --target=node22 \
+RUN /tools/node_modules/.bin/esbuild src/functions/latex.ts --bundle --platform=node --target=node22 \
       --minify --sourcemap --outfile=dist/latex.js
 
 # --- runtime ----------------------------------------------------------------

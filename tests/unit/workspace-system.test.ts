@@ -144,7 +144,7 @@ describe("autofill profile", () => {
     workAuthorization: "", needsSponsorship: "", willingToRelocate: "",
     school: "", degree: "", fieldOfStudy: "", graduationYear: "",
     gender: "", ethnicity: "", disability: "", veteran: "",
-    summary: "", coverLetter: "", answers: [],
+    summary: "", coverLetter: "", experience: [], answers: [],
   }
 
   it("starts from the user's profile before the first save", async () => {
@@ -167,6 +167,19 @@ describe("autofill profile", () => {
     expect(saved.body.data?.answers[0]?.id).toMatch(/^ans_/)
     expect(
       (await call(system, "PUT", "/settings/autofill", { body: { ...body, workAuthorization: "maybe" } })).status,
+    ).toBe(400)
+  })
+
+  it("saves a work history and rejects malformed dates", async () => {
+    const job = { title: "Engineer", company: "Acme", location: "Chennai", startDate: "2021-03", endDate: "", current: true, description: "" }
+    const saved = await call<{ experience: unknown[] }>(system, "PUT", "/settings/autofill", {
+      body: { ...empty, experience: [job, { ...job, current: false, endDate: "2021-02", startDate: "2019-06" }] },
+    })
+    expect(saved.status).toBe(200)
+    expect(saved.body.data?.experience).toHaveLength(2)
+    expect(
+      (await call(system, "PUT", "/settings/autofill", { body: { ...empty, experience: [{ ...job, startDate: "March 2021" }] } }))
+        .status,
     ).toBe(400)
   })
 

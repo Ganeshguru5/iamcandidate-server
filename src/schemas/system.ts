@@ -74,8 +74,21 @@ const autofillAnswer = z.strictObject({
   answer: longText(5000),
 })
 
+const yearMonth = z.union([z.literal(""), z.string().regex(/^(19|20)\d{2}-(0[1-9]|1[0-2])$/, "Use YYYY-MM")])
+
+const autofillJob = z.strictObject({
+  title: shortText(),
+  company: shortText(),
+  location: shortText(),
+  startDate: yearMonth,
+  endDate: yearMonth,
+  current: z.boolean(),
+  description: longText(5000),
+})
+
 export const autofillProfileInput = z.strictObject({
   ...autofillFields,
+  experience: z.array(autofillJob).max(30).default([]),
   answers: z.array(autofillAnswer).max(500),
 })
 

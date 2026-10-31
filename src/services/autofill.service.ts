@@ -43,6 +43,7 @@ export const EMPTY_AUTOFILL: AutofillProfile = {
   veteran: "",
   summary: "",
   coverLetter: "",
+  experience: [],
   answers: [],
 }
 
